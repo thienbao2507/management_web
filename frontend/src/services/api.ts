@@ -60,12 +60,17 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   })
 
   if (!res.ok) {
+    if (res.status === 502) {
+      throw new Error(
+        "Backend FastAPI chưa được bật tại port 8000 (502 Bad Gateway). Hãy chạy backend trong terminal để kết nối Neon."
+      )
+    }
     let errorDetail = "An unexpected error occurred"
     try {
       const errorJson = await res.json()
       errorDetail = errorJson.detail || errorDetail
     } catch {
-      errorDetail = res.statusText
+      errorDetail = res.statusText || `Error HTTP ${res.status}`
     }
     throw new Error(errorDetail)
   }

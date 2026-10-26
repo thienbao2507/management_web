@@ -1,0 +1,15 @@
+{
+  "name": "management-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Project Command Center & Kanban Workspace",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.4",
+    "@neon/env": "^1.6.5"
+  }
+}

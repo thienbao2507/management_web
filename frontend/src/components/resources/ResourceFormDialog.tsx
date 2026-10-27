@@ -70,30 +70,41 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
     setFormError(null)
   }, [open, projects, resource, suggestedProjectId])
 
-  const mergeKeyword = (items: string[], value: string) => {
-    const normalized = value.trim()
-    if (!normalized) return items
-    if (normalized.length > 50) {
-      setFormError("Each keyword can contain at most 50 characters.")
-      return items
+  const mergeKeywords = (items: string[], value: string) => {
+    const candidates = value
+      .split(";")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (candidates.length === 0) return { items, error: null }
+    if (candidates.some((item) => item.length > 50)) {
+      return { items, error: "Each keyword can contain at most 50 characters." }
     }
-    if (items.some((item) => item.toLocaleLowerCase() === normalized.toLocaleLowerCase())) {
-      return items
+
+    const seen = new Set(items.map((item) => item.toLocaleLowerCase()))
+    const additions = candidates.filter((item) => {
+      const key = item.toLocaleLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    if (items.length + additions.length > 20) {
+      return { items, error: "A resource can have at most 20 keywords." }
     }
-    if (items.length >= 20) {
-      setFormError("A resource can have at most 20 keywords.")
-      return items
+    return {
+      items: additions.length > 0 ? [...items, ...additions] : items,
+      error: null,
     }
-    return [...items, normalized]
   }
 
   const commitKeyword = () => {
-    if (keywordInput.trim().length > 50 || (keywords.length >= 20 && !keywords.some((item) => item.toLocaleLowerCase() === keywordInput.trim().toLocaleLowerCase()))) {
-      setFormError("Use at most 20 keywords, each up to 50 characters.")
+    const result = mergeKeywords(keywords, keywordInput)
+    if (result.error) {
+      setFormError(result.error)
       return
     }
-    const next = mergeKeyword(keywords, keywordInput)
-    if (next !== keywords) setKeywords(next)
+    if (result.items !== keywords) setKeywords(result.items)
     setKeywordInput("")
   }
 
@@ -125,13 +136,12 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
       return
     }
 
-    const finalKeywords = mergeKeyword(keywords, keywordInput)
-    if (keywordInput.trim() && finalKeywords === keywords) {
-      const exists = keywords.some(
-        (item) => item.toLocaleLowerCase() === keywordInput.trim().toLocaleLowerCase()
-      )
-      if (!exists) return
+    const keywordResult = mergeKeywords(keywords, keywordInput)
+    if (keywordResult.error) {
+      setFormError(keywordResult.error)
+      return
     }
+    const finalKeywords = keywordResult.items
     setKeywords(finalKeywords)
     setKeywordInput("")
 
@@ -264,8 +274,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
                 }
               }}
               onBlur={commitKeyword}
-              placeholder="Type a keyword and press Enter"
-              maxLength={50}
+              placeholder="Type keywords separated by ; or press Enter"
               disabled={pending || keywords.length >= 20}
             />
             {keywords.length > 0 && (

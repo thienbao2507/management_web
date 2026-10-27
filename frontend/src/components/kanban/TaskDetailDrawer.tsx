@@ -5,9 +5,10 @@ import {
 } from "@/components/ui/Drawer"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import { DialogTitle, DialogDescription } from "@/components/ui/Dialog"
 import { TaskAssigneeAvatar, TaskAssigneeName } from "@/components/identity/TaskIdentity"
-import { cn } from "@/lib/utils"
+import { cn, getTodayDateString } from "@/lib/utils"
 import { type ApiTask, type ApiMember, type ApiSubtask, api } from "@/services/api"
 import {
   Calendar,
@@ -43,7 +44,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const [description, setDescription] = useState(task?.description || "")
   const [status, setStatus] = useState<"backlog" | "todo" | "in_progress" | "done">(task?.status || "todo")
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">(task?.priority || "medium")
-  const [dueDate, setDueDate] = useState(task?.due_date || "")
+  const [dueDate, setDueDate] = useState(task?.due_date || getTodayDateString())
   const [isBlocked, setIsBlocked] = useState(task?.is_blocked || false)
   const [blockerReason, setBlockerReason] = useState(task?.blocker_reason || "")
   const [subtasks, setSubtasks] = useState<ApiSubtask[]>(task?.subtasks || [])
@@ -61,7 +62,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     setDescription(task.description || "")
     setStatus(task.status)
     setPriority(task.priority)
-    setDueDate(task.due_date || "")
+    setDueDate(task.due_date || getTodayDateString())
     setIsBlocked(task.is_blocked)
     setBlockerReason(task.blocker_reason || "")
     setSubtasks(task.subtasks || [])
@@ -295,14 +296,22 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
 
           {/* Due Date */}
           <div>
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-1">
-              <Calendar className="h-3.5 w-3.5" /> Due Date
-            </span>
-            <input
+            <div className="flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" /> Due Date
+              </span>
+              <button
+                type="button"
+                onClick={() => setDueDate(getTodayDateString())}
+                className="text-[10px] text-primary hover:underline font-normal cursor-pointer"
+              >
+                Today
+              </button>
+            </div>
+            <Input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded border border-border bg-background px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>

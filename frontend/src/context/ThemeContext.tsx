@@ -39,8 +39,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (activeTheme === "dark") {
         root.classList.add("dark")
+        root.style.colorScheme = "dark"
       } else {
         root.classList.remove("dark")
+        root.style.colorScheme = "light"
       }
     }
 

@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
 
@@ -40,6 +41,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
@@ -103,3 +105,25 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.45);
 }
+
+/* Date input calendar picker indicator styling */
+input[type="date"] {
+  color-scheme: light;
+}
+
+.dark input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0.8;
+  padding: 2px;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+

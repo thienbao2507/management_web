@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   AlertCircle,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Card, CardContent } from "@/components/ui/Card"
 import {
   Dialog,
   DialogContent,
@@ -322,24 +322,30 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
             </label>
 
             <label className="space-y-1 text-[11px] font-medium">
-              <span>From</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                From
+              </span>
               <input
                 type="date"
                 aria-label="From"
                 value={createdFrom}
                 onChange={(event) => { setCreatedFrom(event.target.value); setPage(1) }}
-                className={selectClassName}
+                className={`${selectClassName} [color-scheme:light] dark:[color-scheme:dark] cursor-pointer`}
               />
             </label>
 
             <label className="space-y-1 text-[11px] font-medium">
-              <span>To</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                To
+              </span>
               <input
                 type="date"
                 aria-label="To"
                 value={createdTo}
                 onChange={(event) => { setCreatedTo(event.target.value); setPage(1) }}
-                className={selectClassName}
+                className={`${selectClassName} [color-scheme:light] dark:[color-scheme:dark] cursor-pointer`}
               />
             </label>
 
@@ -382,73 +388,102 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
           <div className="mt-5 space-y-6">
             {groupedResources.map(([projectIdentity, items]) => (
               <section key={projectIdentity} aria-labelledby={`project-${items[0].project_id}`}>
-                <div className="mb-2 flex items-center gap-2">
-                  <FolderKanban className="h-4 w-4 text-primary" />
-                  <h2 id={`project-${items[0].project_id}`} className="text-xs font-bold">{items[0].project_name}</h2>
-                  <span className="text-[10px] text-muted-foreground">{items.length} on this page</span>
+                <div className="mb-2 flex min-w-0 items-center gap-2">
+                  <FolderKanban className="h-4 w-4 shrink-0 text-primary" />
+                  <h2 id={`project-${items[0].project_id}`} title={items[0].project_name} className="min-w-0 truncate text-xs font-bold">{items[0].project_name}</h2>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{items.length} on this page</span>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                  {items.map((resource) => {
-                    const typeStyle = RESOURCE_TYPE_STYLES[resource.resource_type]
-                    const Icon = typeStyle.icon
-                    return (
-                      <Card key={resource.id} className="group hover:border-primary/35 hover:shadow-md">
-                        <CardContent className="flex h-full flex-col p-4">
-                          <div className="flex items-start gap-3">
-                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${typeStyle.className}`}>
-                              <Icon className="h-4.5 w-4.5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
+                <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card" style={{ containerType: "inline-size" }}>
+                  <table aria-label={`${items[0].project_name} resources`} className="w-full table-fixed border-collapse text-left">
+                    <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <tr className="h-9">
+                        <th scope="col" className="pl-14 pr-3">Name</th>
+                        <th scope="col" className="hidden w-[17%] px-3 [@container(min-width:40rem)]:table-cell">Project</th>
+                        <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Type</th>
+                        <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tags</th>
+                        <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Updated</th>
+                        <th scope="col" className="w-[4.5rem] px-2 text-right [@container(min-width:40rem)]:w-28">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((resource) => {
+                        const typeStyle = RESOURCE_TYPE_STYLES[resource.resource_type]
+                        const Icon = typeStyle.icon
+                        return (
+                          <tr
+                            key={resource.id}
+                            onClick={() => setDetailResource(resource)}
+                            className="group h-14 cursor-pointer border-t border-border/60 transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
+                          >
+                            <td className="px-3">
                               <button
                                 type="button"
-                                onClick={() => setDetailResource(resource)}
-                                className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                aria-label={`View details for ${resource.title}`}
+                                title={resource.title}
+                                onClick={(event) => { event.stopPropagation(); setDetailResource(resource) }}
+                                className="flex h-12 w-full min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               >
-                                {resource.title}
+                                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${typeStyle.className}`}>
+                                  <Icon aria-hidden="true" className="h-4 w-4" />
+                                </span>
+                                <span className="truncate text-xs font-semibold text-foreground group-hover:text-primary">{resource.title}</span>
                               </button>
-                              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{resource.project_name}</p>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button type="button" aria-label={`Actions for ${resource.title}`} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setDetailResource(resource)}>View details</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          <p className="mt-3 line-clamp-2 min-h-8 text-xs leading-relaxed text-muted-foreground">
-                            {resource.description || "No description provided."}
-                          </p>
-
-                          <div className="mt-3 flex min-h-6 flex-wrap gap-1">
-                            {resource.keywords.slice(0, 4).map((keyword) => <Badge className="max-w-full break-all" key={keyword.toLocaleLowerCase()} variant="secondary">{keyword}</Badge>)}
-                            {resource.keywords.length > 4 && <Badge variant="outline">+{resource.keywords.length - 4}</Badge>}
-                          </div>
-
-                          <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{resource.resource_type}</Badge>
-                              <span className="text-[10px] text-muted-foreground">{formatResourceDate(resource.created_at)}</span>
-                            </div>
-                            <a
-                              href={resource.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            >
-                              Open Link <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+                            </td>
+                            <td className="hidden px-3 [@container(min-width:40rem)]:table-cell">
+                              <span title={resource.project_name} className="block truncate text-[11px] text-muted-foreground">{resource.project_name}</span>
+                            </td>
+                            <td className="px-2">
+                              <Badge variant="outline" className="max-w-full whitespace-nowrap px-1.5 text-[10px]" title={resource.resource_type}>
+                                <span className="truncate">{resource.resource_type}</span>
+                              </Badge>
+                            </td>
+                            <td className="hidden px-3 [@container(min-width:52rem)]:table-cell">
+                              <div className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
+                                {resource.keywords.slice(0, 2).map((keyword) => (
+                                  <Badge className="min-w-0 max-w-28 flex-1 whitespace-nowrap" title={keyword} key={keyword.toLocaleLowerCase()} variant="secondary">
+                                    <span className="truncate">{keyword}</span>
+                                  </Badge>
+                                ))}
+                                {resource.keywords.length > 2 && <Badge className="shrink-0 whitespace-nowrap" title={resource.keywords.slice(2).join("; ")} variant="outline">+{resource.keywords.length - 2}</Badge>}
+                                {resource.keywords.length === 0 && <span className="text-[11px] text-muted-foreground">—</span>}
+                              </div>
+                            </td>
+                            <td className="hidden px-3 [@container(min-width:52rem)]:table-cell">
+                              <time dateTime={resource.updated_at} title={formatResourceDate(resource.updated_at, true)} className="block truncate whitespace-nowrap text-[11px] text-muted-foreground">{formatResourceDate(resource.updated_at)}</time>
+                            </td>
+                            <td className="px-2">
+                              <div className="flex items-center justify-end gap-1">
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Open link for ${resource.title}`}
+                                  title="Open Link"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  <span className="hidden whitespace-nowrap [@container(min-width:40rem)]:inline">Open Link</span>
+                                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                                </a>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button type="button" aria-label={`Actions for ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                                    <DropdownMenuItem onClick={() => setDetailResource(resource)}>View details</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </section>
             ))}

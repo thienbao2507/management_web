@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import { Calendar } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/Dialog"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { getTodayDateString } from "@/lib/utils"
 import { type ApiTask, type ApiMember, api } from "@/services/api"
 
 interface CreateTaskModalProps {
@@ -37,13 +39,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium")
   const [status, setStatus] = useState<"backlog" | "todo" | "in_progress" | "done">(defaultStatus)
   const [assigneeKey, setAssigneeKey] = useState<string>("")
-  const [dueDate, setDueDate] = useState("2026-11-10")
+  const [dueDate, setDueDate] = useState(getTodayDateString())
   const [subtasksRaw, setSubtasksRaw] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   React.useEffect(() => {
     setStatus(defaultStatus)
+    setDueDate(getTodayDateString())
     setErrorMessage(null)
   }, [defaultStatus, open])
 
@@ -79,6 +82,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       onTaskCreated(created)
       setTitle("")
       setDescription("")
+      setDueDate(getTodayDateString())
       setSubtasksRaw("")
       onClose()
     } catch (err: any) {
@@ -193,14 +197,23 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-foreground">
-                Due Date
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Due Date
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setDueDate(getTodayDateString())}
+                  className="text-[10px] text-primary hover:underline font-normal cursor-pointer"
+                >
+                  Today
+                </button>
+              </div>
               <Input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1"
               />
             </div>
           </div>

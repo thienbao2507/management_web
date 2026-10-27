@@ -12,6 +12,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         className={cn(
           "flex h-8 w-full rounded-md border border-border bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          type === "date" && "cursor-pointer [color-scheme:light] dark:[color-scheme:dark]",
           className
         )}
         ref={ref}

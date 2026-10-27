@@ -3,7 +3,8 @@ import { DragDropContext, type DropResult } from "@hello-pangea/dnd"
 import { type ApiTask } from "@/services/api"
 import { KanbanColumn } from "./KanbanColumn"
 import { Button } from "@/components/ui/Button"
-import { Avatar } from "@/components/ui/Avatar"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { useUsers } from "@/context/UserContext"
 import { Filter, AlertCircle, Sparkles } from "lucide-react"
 
 interface KanbanBoardProps {
@@ -21,13 +22,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onQuickAdd,
   onTaskMove,
 }) => {
+  const { currentUser, usersById } = useUsers()
   // Active Filter state
   const [activeFilter, setActiveFilter] = useState<"all" | "my" | "urgent" | "blocked">("all")
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all")
 
   // Extract unique assignees from tasks
   const assignees = Array.from(
-    new Set(tasks.map((t) => t.assignee_name).filter(Boolean))
+    new Set(tasks.map((t) => t.assignee_id ? `user:${t.assignee_id}` : t.assignee_name ? `legacy:${t.assignee_name}` : null).filter(Boolean))
   ) as string[]
 
   // Filter tasks based on search, active quick filter and assignee
@@ -38,20 +40,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       const matchesTitle = task.title.toLowerCase().includes(q)
       const matchesKey = task.task_key.toLowerCase().includes(q)
       const matchesCategory = task.category.toLowerCase().includes(q)
-      const matchesAssignee = task.assignee_name?.toLowerCase().includes(q)
+      const matchesAssignee = (task.assignee_id ? usersById[task.assignee_id]?.display_name : task.assignee_name)?.toLowerCase().includes(q)
       if (!matchesTitle && !matchesKey && !matchesCategory && !matchesAssignee) {
         return false
       }
     }
 
     // Assignee filter
-    if (selectedAssignee !== "all" && task.assignee_name !== selectedAssignee) {
+    if (selectedAssignee !== "all" && (task.assignee_id ? `user:${task.assignee_id}` : `legacy:${task.assignee_name}`) !== selectedAssignee) {
       return false
     }
 
     // Quick filters
     if (activeFilter === "my") {
-      return task.assignee_name === "Alex Morgan" || task.assignee_name?.includes("Alex")
+      return Boolean(currentUser && task.assignee_id === currentUser.id)
     }
     if (activeFilter === "urgent") {
       return task.priority === "urgent" || task.priority === "high"
@@ -116,9 +118,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             variant={activeFilter === "my" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("my")}
+            disabled={!currentUser}
+            title={!currentUser ? "Choose a workspace identity first" : "Tasks assigned to this User ID"}
             className="gap-1.5"
           >
-            <Avatar fallback="AM" size="xs" />
+            <UserAvatar user={currentUser} size="xs" />
             <span>My Tasks</span>
           </Button>
 
@@ -154,7 +158,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <option value="all">All Assignees</option>
               {assignees.map((name) => (
                 <option key={name} value={name}>
-                  {name}
+                  {name.startsWith("user:") ? usersById[name.slice(5)]?.display_name || "User unavailable" : `${name.slice(7)} (legacy)`}
                 </option>
               ))}
             </select>

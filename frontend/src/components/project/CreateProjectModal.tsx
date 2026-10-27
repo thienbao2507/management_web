@@ -9,16 +9,18 @@ import {
 } from "@/components/ui/Dialog"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { type ApiProject, api } from "@/services/api"
+import { type ApiProject, type ApiWorkspace, api } from "@/services/api"
 
 interface CreateProjectModalProps {
   open: boolean
+  workspace: ApiWorkspace
   onClose: () => void
   onProjectCreated: (newProj: ApiProject) => void
 }
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   open,
+  workspace,
   onClose,
   onProjectCreated,
 }) => {
@@ -42,6 +44,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         key: key.trim().toUpperCase() || undefined,
         description: description.trim() || undefined,
         priority,
+        workspace_id: workspace.id,
       })
 
       onProjectCreated(created)
@@ -62,7 +65,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
-            Create an isolated project workspace in Neon PostgreSQL.
+            Create a Project inside the selected Workspace. Existing Projects are not moved.
           </DialogDescription>
         </DialogHeader>
 
@@ -73,6 +76,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 py-1">
+          <div>
+            <label className="text-xs font-semibold text-foreground">Workspace</label>
+            <Input value={workspace.name} readOnly disabled className="mt-1" />
+          </div>
           <div>
             <label className="text-xs font-semibold text-foreground">
               Project Name <span className="text-red-500">*</span>

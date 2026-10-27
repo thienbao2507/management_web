@@ -1,10 +1,12 @@
 import React from "react"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { useUsers } from "@/context/UserContext"
 import {
   LayoutDashboard,
   FolderKanban,
   CheckSquare,
   Calendar,
-  BarChart3,
+  LibraryBig,
   Settings,
   Zap,
 } from "lucide-react"
@@ -16,7 +18,7 @@ export type NavItemKey =
   | "projects"
   | "tasks"
   | "calendar"
-  | "reports"
+  | "resources"
   | "settings"
 
 interface PrimarySidebarProps {
@@ -30,12 +32,13 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
   onSelectItem,
   className,
 }) => {
+  const { currentUser, openIdentity } = useUsers()
   const navItems = [
     { key: "dashboard" as NavItemKey, label: "Command Center", icon: LayoutDashboard },
     { key: "projects" as NavItemKey, label: "Projects", icon: FolderKanban },
     { key: "tasks" as NavItemKey, label: "Tasks & Board", icon: CheckSquare },
     { key: "calendar" as NavItemKey, label: "Calendar", icon: Calendar },
-    { key: "reports" as NavItemKey, label: "Reports & Velocity", icon: BarChart3 },
+    { key: "resources" as NavItemKey, label: "Project Resources", icon: LibraryBig },
     { key: "settings" as NavItemKey, label: "Settings", icon: Settings },
   ]
 
@@ -68,6 +71,8 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectItem(item.key)}
+                      aria-label={item.label}
+                      aria-current={isActive ? "page" : undefined}
                       className={cn(
                         "relative flex h-9 w-9 items-center justify-center rounded-lg transition-all",
                         isActive
@@ -95,15 +100,18 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
         <div className="flex flex-col items-center gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div
+              <button
+                type="button"
+                onClick={() => openIdentity("select")}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white font-bold text-xs ring-2 ring-white/20 cursor-pointer hover:ring-white/40 transition-all"
-                title="Workspace Profile"
+                title={currentUser?.display_name || "Choose workspace identity"}
+                aria-label="Choose workspace identity"
               >
-                AM
-              </div>
+                <UserAvatar user={currentUser} size="md" className="border-0 bg-transparent text-white" />
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <span>Alex Morgan (Lead)</span>
+              <span>{currentUser?.display_name || "Choose workspace identity"}</span>
             </TooltipContent>
           </Tooltip>
         </div>

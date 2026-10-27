@@ -6,14 +6,17 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react"
 import { MiniCalendar } from "@/components/widgets/MiniCalendar"
-import { Avatar } from "@/components/ui/Avatar"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { TaskAssigneeAvatar, TaskAssigneeName } from "@/components/identity/TaskIdentity"
+import { useUsers } from "@/context/UserContext"
 import { Badge } from "@/components/ui/Badge"
-import { USERS } from "@/data/mockData"
 import { cn } from "@/lib/utils"
 import { type ApiTask } from "@/services/api"
 
 interface RightSidebarProps {
   tasks: ApiTask[]
+  loading?: boolean
+  error?: string | null
   isCollapsed: boolean
   onToggleCollapse: () => void
   onTaskClick?: (task: ApiTask) => void
@@ -22,11 +25,13 @@ interface RightSidebarProps {
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({
   tasks,
+  loading, error,
   isCollapsed,
   onToggleCollapse,
   onTaskClick,
   className,
 }) => {
+  const { currentUser } = useUsers()
   // Extract upcoming deadlines from actual tasks
   const upcomingTasks = tasks
     .filter((t) => t.due_date && t.status !== "done")
@@ -51,16 +56,15 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       {/* Right Sidebar Header */}
       <div className="flex items-center justify-between p-3.5 border-b border-border/70">
         <div className="flex items-center gap-2">
-          <Avatar
-            src={USERS.alex.avatar}
-            fallback={USERS.alex.initials}
+          <UserAvatar
+            user={currentUser}
             size="sm"
           />
           <div>
             <h3 className="text-xs font-semibold text-foreground">
-              Alex Morgan
+              {currentUser?.display_name || "No identity selected"}
             </h3>
-            <p className="text-[10px] text-muted-foreground">Product Lead</p>
+            <p className="text-[10px] text-muted-foreground">{currentUser?.job_title || "Workspace profile"}</p>
           </div>
         </div>
 
@@ -76,6 +80,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
       {/* Content Scroll Container */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+        {loading || error ? <p role={error ? "alert" : "status"} className="text-xs text-muted-foreground">{error || "Loading project tasks..."}</p> : <>
         {/* Widget 1: Interactive Mini Calendar */}
         <div>
           <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -121,12 +126,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </h4>
                   <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Avatar
-                        src={t.assignee_avatar || undefined}
-                        fallback={t.assignee_initials || "ME"}
+                      <TaskAssigneeAvatar
+                        task={t}
                         size="xs"
                       />
-                      <span>{t.assignee_name?.split(" ")[0] || "Unassigned"}</span>
+                      <span><TaskAssigneeName task={t} /></span>
                     </span>
                     <span className="capitalize">{t.status.replace("_", " ")}</span>
                   </div>
@@ -156,6 +160,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             </div>
           </div>
         )}
+        </>}
       </div>
     </aside>
   )

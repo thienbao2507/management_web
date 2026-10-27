@@ -1,7 +1,8 @@
 from typing import Optional, List
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.subtask import SubtaskResponse
+from app.schemas.user import UserResponse
 
 class TaskBase(BaseModel):
     title: str
@@ -23,7 +24,8 @@ class TaskBase(BaseModel):
 
 class TaskCreate(BaseModel):
     project_id: str
-    sprint_id: Optional[str] = None
+    sprint_id: Optional[str] = Field(None, min_length=1, max_length=36)
+    assignee_id: Optional[str] = Field(None, min_length=1, max_length=36)
     title: str
     description: Optional[str] = None
     category: Optional[str] = "Feature"
@@ -38,6 +40,8 @@ class TaskCreate(BaseModel):
     subtask_titles: Optional[List[str]] = []
 
 class TaskUpdate(BaseModel):
+    assignee_id: Optional[str] = Field(None, min_length=1, max_length=36)
+    sprint_id: Optional[str] = Field(None, min_length=1, max_length=36)
     title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
@@ -57,8 +61,12 @@ class TaskUpdate(BaseModel):
 class TaskReorder(BaseModel):
     status: str
     position: int
+    sprint_id: Optional[str] = None
+    unsprinted: bool = False
 
 class TaskResponse(TaskBase):
+    assignee_id: Optional[str] = None
+    assignee: Optional[UserResponse] = None
     id: str
     project_id: str
     sprint_id: Optional[str] = None

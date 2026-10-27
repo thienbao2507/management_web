@@ -5,9 +5,10 @@ import {
 } from "@/components/ui/Drawer"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Avatar } from "@/components/ui/Avatar"
+import { DialogTitle, DialogDescription } from "@/components/ui/Dialog"
+import { TaskAssigneeAvatar, TaskAssigneeName } from "@/components/identity/TaskIdentity"
 import { cn } from "@/lib/utils"
-import { type ApiTask, type ApiSubtask, api } from "@/services/api"
+import { type ApiTask, type ApiMember, type ApiSubtask, api } from "@/services/api"
 import {
   Calendar,
   CheckSquare,
@@ -26,6 +27,8 @@ interface TaskDetailDrawerProps {
   onClose: () => void
   onTaskUpdated: (updated: ApiTask) => void
   onTaskDeleted: (taskId: string) => void
+  members: ApiMember[]
+  membersError: string | null
 }
 
 export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
@@ -34,17 +37,17 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   onClose,
   onTaskUpdated,
   onTaskDeleted,
+  members, membersError,
 }) => {
-  if (!task) return null
-
-  const [title, setTitle] = useState(task.title)
-  const [description, setDescription] = useState(task.description || "")
-  const [status, setStatus] = useState<"backlog" | "todo" | "in_progress" | "done">(task.status)
-  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">(task.priority)
-  const [dueDate, setDueDate] = useState(task.due_date || "")
-  const [isBlocked, setIsBlocked] = useState(task.is_blocked)
-  const [blockerReason, setBlockerReason] = useState(task.blocker_reason || "")
-  const [subtasks, setSubtasks] = useState<ApiSubtask[]>(task.subtasks || [])
+  const [title, setTitle] = useState(task?.title || "")
+  const [description, setDescription] = useState(task?.description || "")
+  const [status, setStatus] = useState<"backlog" | "todo" | "in_progress" | "done">(task?.status || "todo")
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">(task?.priority || "medium")
+  const [dueDate, setDueDate] = useState(task?.due_date || "")
+  const [isBlocked, setIsBlocked] = useState(task?.is_blocked || false)
+  const [blockerReason, setBlockerReason] = useState(task?.blocker_reason || "")
+  const [subtasks, setSubtasks] = useState<ApiSubtask[]>(task?.subtasks || [])
+  const [assigneeChoice, setAssigneeChoice] = useState("keep")
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("")
 
   const [isSaving, setIsSaving] = useState(false)
@@ -53,6 +56,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   useEffect(() => {
+    if (!task) return
     setTitle(task.title)
     setDescription(task.description || "")
     setStatus(task.status)
@@ -63,7 +67,10 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     setSubtasks(task.subtasks || [])
     setConfirmDelete(false)
     setNotification(null)
+    setAssigneeChoice("keep")
   }, [task])
+
+  if (!task) return null
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message })
@@ -75,6 +82,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     setIsSaving(true)
     try {
       const updated = await api.updateTask(task.id, {
+        ...(assigneeChoice !== "keep" ? { assignee_id: assigneeChoice || null } : {}),
         title,
         description,
         status,
@@ -155,6 +163,8 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   return (
     <Drawer open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DrawerContent className="overflow-y-auto">
+        <DialogTitle className="sr-only">Task details</DialogTitle>
+        <DialogDescription className="sr-only">Edit task fields, project assignment and checklist.</DialogDescription>
         {/* Header with Task Key & Priority */}
         <div className="flex items-center justify-between border-b border-border/80 pb-3 pr-8">
           <div className="flex items-center gap-2">
@@ -267,15 +277,20 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               <UserIcon className="h-3.5 w-3.5" /> Assignee
             </span>
             <div className="flex items-center gap-2">
-              <Avatar
-                src={task.assignee_avatar || undefined}
-                fallback={task.assignee_initials || task.assignee_name?.slice(0, 2) || "ME"}
+              <TaskAssigneeAvatar
+                task={task}
                 size="sm"
               />
               <span className="text-xs font-medium text-foreground truncate">
-                {task.assignee_name || "Unassigned"}
+                <TaskAssigneeName task={task} />
               </span>
             </div>
+            <select aria-label="Reassign task" value={assigneeChoice} onChange={(event) => setAssigneeChoice(event.target.value)} disabled={Boolean(membersError) || isSaving} className="mt-1 w-full rounded border border-border bg-background px-2 py-1 text-xs">
+              <option value="keep">Keep current assignment</option>
+              <option value="">Unassigned</option>
+              {members.filter((member) => member.user.is_active).map(({ user }) => <option key={user.id} value={user.id}>{user.display_name}</option>)}
+            </select>
+            {membersError && <p role="alert" className="mt-1 text-[10px] text-red-600 dark:text-red-400">{membersError}</p>}
           </div>
 
           {/* Due Date */}

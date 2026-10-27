@@ -19,6 +19,7 @@ class ProjectCreate(BaseModel):
     priority: Optional[str] = "medium"
     start_date: Optional[date] = None
     due_date: Optional[date] = None
+    workspace_id: Optional[str] = None
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -31,6 +32,7 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(ProjectBase):
     id: str
+    workspace_id: Optional[str] = None
     is_archived: bool
     created_at: datetime
     updated_at: datetime

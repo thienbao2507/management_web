@@ -3,20 +3,27 @@ import { cn } from "@/lib/utils"
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   src?: string
+  fallbackSrc?: string
+  identityKey?: string
   alt?: string
   fallback: string
   size?: "xs" | "sm" | "md" | "lg"
 }
 
-export const Avatar: React.FC<AvatarProps> = ({
+const AvatarImage: React.FC<AvatarProps> = ({
   src,
+  fallbackSrc,
+  identityKey,
   alt = "",
   fallback,
   size = "md",
   className,
   ...props
 }) => {
-  const [imageError, setImageError] = React.useState(false)
+  const signature = JSON.stringify([identityKey, src, fallbackSrc])
+  const [failures, setFailures] = React.useState<{ signature: string; urls: string[] }>({ signature, urls: [] })
+  const failed = failures.signature === signature ? failures.urls : []
+  const resolvedSrc = [src, fallbackSrc].find((url) => url && !failed.includes(url))
 
   const sizeClasses = {
     xs: "h-5 w-5 text-[9px]",
@@ -34,11 +41,12 @@ export const Avatar: React.FC<AvatarProps> = ({
       )}
       {...props}
     >
-      {src && !imageError ? (
+      {resolvedSrc ? (
         <img
-          src={src}
+          key={resolvedSrc}
+          src={resolvedSrc}
           alt={alt}
-          onError={() => setImageError(true)}
+          onError={() => setFailures((previous) => ({ signature, urls: [...(previous.signature === signature ? previous.urls : []), resolvedSrc] }))}
           className="aspect-square h-full w-full object-cover"
         />
       ) : (
@@ -47,3 +55,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     </div>
   )
 }
+
+export const Avatar: React.FC<AvatarProps> = (props) => (
+  <AvatarImage key={JSON.stringify([props.identityKey, props.src, props.fallbackSrc])} {...props} />
+)

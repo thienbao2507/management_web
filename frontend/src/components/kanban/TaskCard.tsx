@@ -1,7 +1,7 @@
 import React from "react"
 import { CheckSquare, MessageSquare, AlertCircle, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/Badge"
-import { Avatar } from "@/components/ui/Avatar"
+import { TaskAssigneeAvatar } from "@/components/identity/TaskIdentity"
 import { cn } from "@/lib/utils"
 import { type ApiTask } from "@/services/api"
 
@@ -112,12 +112,9 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
 
           {/* Assignee Avatar */}
           <div className="flex items-center">
-            <Avatar
-              src={task.assignee_avatar || undefined}
-              fallback={task.assignee_initials || task.assignee_name?.slice(0, 2).toUpperCase() || "ME"}
+            <TaskAssigneeAvatar
+              task={task}
               size="sm"
-              alt={task.assignee_name || "Assignee"}
-              title={task.assignee_name ? `Assigned to ${task.assignee_name}` : "Unassigned"}
             />
           </div>
         </div>

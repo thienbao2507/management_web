@@ -9,13 +9,16 @@ import {
 } from "@/components/ui/Dialog"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { type ApiTask, api } from "@/services/api"
-import { USERS } from "@/data/mockData"
+import { type ApiTask, type ApiMember, api } from "@/services/api"
 
 interface CreateTaskModalProps {
   open: boolean
   onClose: () => void
   projectId: string
+  sprintId?: string | null
+  members: ApiMember[]
+  membersError: string | null
+  membersLoading: boolean
   defaultStatus?: "backlog" | "todo" | "in_progress" | "done"
   onTaskCreated: (newTask: ApiTask) => void
 }
@@ -24,6 +27,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   open,
   onClose,
   projectId,
+  sprintId, members, membersError, membersLoading,
   defaultStatus = "todo",
   onTaskCreated,
 }) => {
@@ -32,7 +36,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [category, setCategory] = useState("Feature")
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium")
   const [status, setStatus] = useState<"backlog" | "todo" | "in_progress" | "done">(defaultStatus)
-  const [assigneeKey, setAssigneeKey] = useState<string>("alex")
+  const [assigneeKey, setAssigneeKey] = useState<string>("")
   const [dueDate, setDueDate] = useState("2026-11-10")
   const [subtasksRaw, setSubtasksRaw] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -53,7 +57,6 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     setIsLoading(true)
     setErrorMessage(null)
 
-    const selectedUser = USERS[assigneeKey] || USERS.alex
     const subtaskTitles = subtasksRaw
       .split("\n")
       .map((s) => s.trim())
@@ -62,15 +65,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     try {
       const created = await api.createTask({
         project_id: projectId,
+        sprint_id: sprintId || null,
         title: title.trim(),
         description: description.trim() || undefined,
         category: category.trim() || "Feature",
         status,
         priority,
         due_date: dueDate || undefined,
-        assignee_name: selectedUser.name,
-        assignee_avatar: selectedUser.avatar,
-        assignee_initials: selectedUser.initials,
+        assignee_id: assigneeKey || null,
         subtask_titles: subtaskTitles,
       })
 
@@ -174,16 +176,20 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 Assignee
               </label>
               <select
+                aria-label="Assignee"
                 value={assigneeKey}
                 onChange={(e) => setAssigneeKey(e.target.value)}
+                disabled={membersLoading || Boolean(membersError) || isLoading}
                 className="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                {Object.entries(USERS).map(([key, user]) => (
-                  <option key={key} value={key}>
-                    {user.name} ({user.role.split(" ")[0]})
+                <option value="">Unassigned</option>
+                {members.filter((member) => member.user.is_active).map(({ user }) => (
+                  <option key={user.id} value={user.id}>
+                    {user.display_name}
                   </option>
                 ))}
               </select>
+              {membersError ? <p role="alert" className="mt-1 text-[10px] text-red-600 dark:text-red-400">{membersError}</p> : !membersLoading && members.length === 0 ? <p className="mt-1 text-[10px] text-muted-foreground">No memberships configured for this project. New tasks can remain unassigned.</p> : null}
             </div>
 
             <div>

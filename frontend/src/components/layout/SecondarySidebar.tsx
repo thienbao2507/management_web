@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Map,
   Kanban,
-  FileText,
+  LibraryBig,
   AlertCircle,
   Package,
   Users,
@@ -13,9 +13,11 @@ import {
   Plus,
   Check,
   ChevronDown,
+  Building2,
+  Archive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { type ApiProject } from "@/services/api"
+import { type ApiProject, type ApiWorkspace } from "@/services/api"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,35 +31,49 @@ export type SecondaryNavKey =
   | "dashboard"
   | "roadmap"
   | "active_sprint"
-  | "reports"
+  | "resources"
   | "issues"
   | "releases"
   | "team"
   | "settings"
 
 interface SecondarySidebarProps {
+  currentWorkspace: ApiWorkspace | null
+  workspaceLoading: boolean
+  workspaceError: string | null
+  legacyMode: boolean
   projects: ApiProject[]
   selectedProject: ApiProject | null
   onSelectProject: (proj: ApiProject) => void
   onCreateProjectClick: () => void
+  onCreateWorkspaceClick: () => void
+  onSelectUnassigned: () => void
   activeItem: SecondaryNavKey
   onSelectItem: (item: SecondaryNavKey) => void
   isCollapsed: boolean
   onToggleCollapse: () => void
   tasksCount?: number
+  membersCount?: number | null
   className?: string
 }
 
 export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
+  currentWorkspace,
+  workspaceLoading,
+  workspaceError,
+  legacyMode,
   projects,
   selectedProject,
   onSelectProject,
   onCreateProjectClick,
+  onCreateWorkspaceClick,
+  onSelectUnassigned,
   activeItem,
   onSelectItem,
   isCollapsed,
   onToggleCollapse,
   tasksCount = 0,
+  membersCount,
   className,
 }) => {
   const menuItems = [
@@ -70,9 +86,9 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
       badge: "Active",
     },
     { key: "issues" as SecondaryNavKey, label: "Issues / Tasks", icon: AlertCircle, count: String(tasksCount) },
-    { key: "reports" as SecondaryNavKey, label: "Reports", icon: FileText },
+    { key: "resources" as SecondaryNavKey, label: "Resources", icon: LibraryBig },
     { key: "releases" as SecondaryNavKey, label: "Releases", icon: Package },
-    { key: "team" as SecondaryNavKey, label: "Team Members", icon: Users, count: "5" },
+    { key: "team" as SecondaryNavKey, label: "Team Members", icon: Users, count: membersCount == null ? "—" : String(membersCount) },
     { key: "settings" as SecondaryNavKey, label: "Settings", icon: Settings },
   ]
 
@@ -84,16 +100,43 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
         className
       )}
     >
-      {/* Workspace / Project Selector Dropdown */}
-      <div className="flex items-center justify-between p-2.5 border-b border-border/70">
+      {/* Actual Workspace context and Project selector */}
+      <div className="border-b border-border/70 p-2.5">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {legacyMode ? <Archive className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Workspace</p>
+            <p className="truncate text-xs font-semibold" title={workspaceError || undefined}>
+              {legacyMode ? "Unassigned Projects" : workspaceLoading ? "Loading..." : currentWorkspace?.name || (workspaceError ? "Unavailable" : "No Workspace")}
+            </p>
+          </div>
+          <button type="button" onClick={onToggleCollapse} title="Collapse sidebar" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mb-2 flex gap-1.5">
+          {!currentWorkspace && !workspaceLoading && !workspaceError && !legacyMode && (
+            <button type="button" onClick={onCreateWorkspaceClick} className="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10">
+              <Plus className="h-3 w-3" /> Create Workspace
+            </button>
+          )}
+          <button type="button" onClick={onSelectUnassigned} aria-pressed={legacyMode} className={cn("flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold", legacyMode ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted") }>
+            <Archive className="h-3 w-3" /> {legacyMode ? "Back to Workspace" : "Unassigned"}
+          </button>
+        </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg p-1 hover:bg-muted/70 transition-colors group"
+              aria-label={`Select project: ${selectedProject?.name || "none"}`}
+              className="flex w-full items-center gap-2 min-w-0 text-left rounded-lg border border-border/70 p-1.5 hover:bg-muted/70 transition-colors group"
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-400 font-bold text-xs">
-                {selectedProject?.key || <FolderGit2 className="h-4 w-4" />}
+              <div title={selectedProject?.key} className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-100 px-0.5 text-blue-700 dark:bg-blue-950/80 dark:text-blue-400 font-bold text-[10px]">
+                {selectedProject?.key ? <span className="truncate">{selectedProject.key}</span> : <FolderGit2 className="h-4 w-4" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
@@ -103,14 +146,14 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                   <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate font-mono">
-                  {selectedProject ? `Key: ${selectedProject.key}` : "Neon PostgreSQL"}
+                  {selectedProject ? `Key: ${selectedProject.key}` : legacyMode ? "Legacy / unassigned" : "Project in Workspace"}
                 </p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Neon Projects</span>
+              <span>{legacyMode ? "Unassigned Projects" : "Workspace Projects"}</span>
               <span className="text-[10px] text-muted-foreground">{projects.length} total</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -133,12 +176,13 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             ))}
             {projects.length === 0 && (
               <div className="p-2 text-center text-xs text-muted-foreground">
-                No projects found on Neon.
+                No Projects in this scope.
               </div>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onCreateProjectClick}
+              disabled={!currentWorkspace || legacyMode}
               className="text-primary font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -146,22 +190,12 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Collapse toggle button */}
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          title="Collapse sidebar"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ml-1"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto px-2 py-3">
         <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-          Workspace Views
+          Project Views
         </div>
 
         <nav className="space-y-0.5">
@@ -174,6 +208,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                 key={item.key}
                 type="button"
                 onClick={() => onSelectItem(item.key)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-all group",
                   isActive

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, Date, Boolean, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, deferred
 from app.core.database import Base
 
 class Task(Base):
@@ -19,6 +19,9 @@ class Task(Base):
     position = Column(Integer, nullable=False, default=0)
     
     # Assignee fields
+    # Deferred so reads can explicitly support the pre-Phase-3 schema while
+    # production migration is awaiting approval. Never lazily serialize it.
+    assignee_id = deferred(Column(String(36), ForeignKey("users.id", name="fk_tasks_assignee_id_users", ondelete="SET NULL"), nullable=True, index=True))
     assignee_name = Column(String(255), nullable=True)
     assignee_avatar = Column(String(500), nullable=True)
     assignee_initials = Column(String(10), nullable=True)

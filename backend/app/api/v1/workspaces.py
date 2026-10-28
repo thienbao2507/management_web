@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.auth import get_request_auth, require_authenticated_request
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.schemas.workspace import WorkspaceCreate, WorkspaceResponse
 
 
-router = APIRouter(prefix="/workspaces", tags=["workspaces"])
+router = APIRouter(prefix="/workspaces", tags=["workspaces"], dependencies=[Depends(require_authenticated_request)])
 
 WORKSPACE_SCHEMA_ERROR = (
     "Workspace schema is not ready. A separately approved database migration is required."
@@ -50,21 +51,13 @@ def require_active_user(db: Session, user_id: str, *, lock: bool = False) -> Use
     return user
 
 
-def require_workspace(db: Session, workspace_id: str) -> Workspace:
-    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
-    if not workspace:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-    return workspace
-
-
 @router.get("", response_model=list[WorkspaceResponse])
 def list_workspaces(
-    owner_user_id: str = Query(min_length=1, max_length=36),
+    request: Request,
     db: Session = Depends(get_db),
 ):
     require_workspace_schema(db)
-    owner_user_id = owner_user_id.strip()
-    require_active_user(db, owner_user_id)
+    owner_user_id = get_request_auth(request).user.id
     return (
         db.query(Workspace)
         .filter(
@@ -77,13 +70,14 @@ def list_workspaces(
 
 
 @router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
-def create_workspace(payload: WorkspaceCreate, db: Session = Depends(get_db)):
+def create_workspace(payload: WorkspaceCreate, request: Request, db: Session = Depends(get_db)):
     require_workspace_schema(db)
-    require_active_user(db, payload.owner_user_id, lock=True)
+    owner_user_id = get_request_auth(request).user.id
+    require_active_user(db, owner_user_id, lock=True)
     if (
         db.query(Workspace.id)
         .filter(
-            Workspace.owner_user_id == payload.owner_user_id,
+            Workspace.owner_user_id == owner_user_id,
             Workspace.workspace_type == "personal",
         )
         .first()
@@ -91,7 +85,7 @@ def create_workspace(payload: WorkspaceCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="User already has a personal Workspace")
 
     workspace = Workspace(
-        owner_user_id=payload.owner_user_id,
+        owner_user_id=owner_user_id,
         name=payload.name,
         description=payload.description,
         workspace_type="personal",

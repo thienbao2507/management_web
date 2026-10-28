@@ -109,7 +109,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Workspace</p>
             <p className="truncate text-xs font-semibold" title={workspaceError || undefined}>
-              {legacyMode ? "Unassigned Projects" : workspaceLoading ? "Loading..." : currentWorkspace?.name || (workspaceError ? "Unavailable" : "No Workspace")}
+              {legacyMode ? "Shared with me" : workspaceLoading ? "Loading..." : currentWorkspace?.name || (workspaceError ? "Unavailable" : "No Workspace")}
             </p>
           </div>
           <button type="button" onClick={onToggleCollapse} title="Collapse sidebar" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -124,7 +124,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             </button>
           )}
           <button type="button" onClick={onSelectUnassigned} aria-pressed={legacyMode} className={cn("flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold", legacyMode ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted") }>
-            <Archive className="h-3 w-3" /> {legacyMode ? "Back to Workspace" : "Unassigned"}
+            <Archive className="h-3 w-3" /> {legacyMode ? "Back to Workspace" : "Shared"}
           </button>
         </div>
 
@@ -146,14 +146,14 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                   <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate font-mono">
-                  {selectedProject ? `Key: ${selectedProject.key}` : legacyMode ? "Legacy / unassigned" : "Project in Workspace"}
+                  {selectedProject ? `Key: ${selectedProject.key}` : legacyMode ? "Project shared with you" : "Project in Workspace"}
                 </p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel className="flex items-center justify-between">
-              <span>{legacyMode ? "Unassigned Projects" : "Workspace Projects"}</span>
+              <span>{legacyMode ? "Shared Projects" : "Workspace Projects"}</span>
               <span className="text-[10px] text-muted-foreground">{projects.length} total</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

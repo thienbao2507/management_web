@@ -102,16 +102,16 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => openIdentity("select")}
+                onClick={() => openIdentity(currentUser ? "edit" : "login")}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white font-bold text-xs ring-2 ring-white/20 cursor-pointer hover:ring-white/40 transition-all"
-                title={currentUser?.display_name || "Choose workspace identity"}
-                aria-label="Choose workspace identity"
+                title={currentUser?.display_name || "Sign in"}
+                aria-label={currentUser ? "Edit profile" : "Sign in"}
               >
                 <UserAvatar user={currentUser} size="md" className="border-0 bg-transparent text-white" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <span>{currentUser?.display_name || "Choose workspace identity"}</span>
+              <span>{currentUser?.display_name || "Sign in"}</span>
             </TooltipContent>
           </Tooltip>
         </div>

@@ -75,5 +75,9 @@ artifacts/
 .ai-workflow/
 .agents/
 tests/
+!backend/tests/
+backend/tests/*
+!backend/tests/auth/
+!backend/tests/auth/*.py
 
 

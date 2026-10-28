@@ -3,23 +3,26 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session, undefer
 
 from app.api.v1.workspaces import (
-    require_workspace,
     require_workspace_schema,
     workspace_schema_ready,
 )
 from app.core.database import get_db
+from app.core.auth import get_request_auth, require_authenticated_request
+from app.core.authorization import accessible_project_query, require_project_access, require_workspace_owner
+from app.models.project_membership import ProjectMembership
+from app.models.workspace import Workspace
 from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.task import Task
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(require_authenticated_request)])
 
 
 def generate_project_key(name: str, db: Session) -> str:
@@ -72,43 +75,45 @@ def project_query(db: Session, *, include_workspace: bool):
 
 
 def get_project_response(
-    db: Session, project_id: str, *, include_workspace: bool
+    db: Session, project_id: str, user_id: str, *, include_workspace: bool
 ) -> ProjectResponse:
-    project = project_query(db, include_workspace=include_workspace).filter(
-        Project.id == project_id
-    ).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = require_project_access(db, project_id, user_id, include_archived=True).project
     count = db.query(func.count(Task.id)).filter(Task.project_id == project.id).scalar() or 0
     return project_to_response(project, count, include_workspace=include_workspace)
 
 
 @router.get("", response_model=List[ProjectResponse])
 def get_projects(
+    request: Request,
     include_archived: bool = Query(False),
     workspace_id: Optional[str] = Query(default=None, min_length=1, max_length=36),
     unassigned: bool = Query(False),
+    shared: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    if workspace_id and unassigned:
+    if sum(bool(value) for value in (workspace_id, unassigned, shared)) > 1:
         raise HTTPException(
             status_code=422,
-            detail="workspace_id and unassigned cannot be used together",
+            detail="Choose only one project scope",
         )
+    user_id = get_request_auth(request).user.id
 
     schema_ready = workspace_schema_ready(db)
     if workspace_id:
         require_workspace_schema(db)
         workspace_id = workspace_id.strip()
-        require_workspace(db, workspace_id)
+        require_workspace_owner(db, workspace_id, user_id)
 
-    query = project_query(db, include_workspace=schema_ready)
+    query = accessible_project_query(db, user_id, include_archived=include_archived)
     if workspace_id:
         query = query.filter(Project.workspace_id == workspace_id)
-    elif unassigned and schema_ready:
-        query = query.filter(Project.workspace_id.is_(None))
-    if not include_archived:
-        query = query.filter(Project.is_archived.is_(False))
+    elif unassigned:
+        query = query.filter(False)
+    elif shared:
+        query = query.filter(
+            Project.id.in_(db.query(ProjectMembership.project_id).filter(ProjectMembership.user_id == user_id)),
+            Project.workspace_id.in_(db.query(Workspace.id).filter(Workspace.owner_user_id != user_id)),
+        )
     projects = query.order_by(Project.created_at.desc()).all()
 
     result = []
@@ -126,7 +131,7 @@ def get_projects(
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
-def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
+def create_project(payload: ProjectCreate, request: Request, db: Session = Depends(get_db)):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Project name cannot be empty")
 
@@ -138,7 +143,7 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
         )
     if payload.workspace_id:
         require_workspace_schema(db)
-        require_workspace(db, payload.workspace_id)
+        require_workspace_owner(db, payload.workspace_id, get_request_auth(request).user.id)
 
     key = payload.key.upper().strip() if payload.key else generate_project_key(payload.name, db)
     if db.query(Project).filter(Project.key == key).first():
@@ -179,13 +184,13 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
     )
     db.commit()
 
-    return get_project_response(db, project_id, include_workspace=schema_ready)
+    return get_project_response(db, project_id, get_request_auth(request).user.id, include_workspace=schema_ready)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(project_id: str, db: Session = Depends(get_db)):
+def get_project(project_id: str, request: Request, db: Session = Depends(get_db)):
     return get_project_response(
-        db, project_id, include_workspace=workspace_schema_ready(db)
+        db, project_id, get_request_auth(request).user.id, include_workspace=workspace_schema_ready(db)
     )
 
 
@@ -193,27 +198,25 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
 def update_project(
     project_id: str,
     payload: ProjectUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     schema_ready = workspace_schema_ready(db)
-    project = project_query(db, include_workspace=schema_ready).filter(
-        Project.id == project_id
-    ).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    user_id = get_request_auth(request).user.id
+    project = require_project_access(db, project_id, user_id, owner_required=True, include_archived=True).project
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(project, field, value)
 
     db.commit()
-    return get_project_response(db, project_id, include_workspace=schema_ready)
+    return get_project_response(db, project_id, user_id, include_workspace=schema_ready)
 
 
 @router.delete("/{project_id}", status_code=200)
-def delete_project(project_id: str, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def delete_project(project_id: str, request: Request, db: Session = Depends(get_db)):
+    project = require_project_access(
+        db, project_id, get_request_auth(request).user.id, owner_required=True, include_archived=True
+    ).project
 
     project.is_archived = True
     db.commit()

@@ -1,8 +1,10 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, undefer
 from sqlalchemy import func, insert
-from app.api.v1.project_workspace import require_project, identity_schema_ready, require_identity_schema
+from app.api.v1.project_workspace import identity_schema_ready, require_identity_schema
+from app.core.auth import get_request_auth, require_authenticated_request
+from app.core.authorization import require_project_access
 from app.models.user import User
 from app.models.sprint import Sprint
 from app.models.project_membership import ProjectMembership
@@ -14,7 +16,7 @@ from app.models.project import Project
 from app.schemas.task import TaskCreate, TaskUpdate, TaskReorder, TaskResponse
 from app.schemas.subtask import SubtaskCreate, SubtaskUpdate, SubtaskResponse
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(require_authenticated_request)])
 
 
 def task_query(db: Session):
@@ -48,11 +50,11 @@ def validate_assignee(db: Session, project_id: str, user_id: str | None):
         raise HTTPException(422, "Assignee must be a member of this project")
 
 
-def find_task(db: Session, task_id: str):
+def find_task(db: Session, task_id: str, user_id: str):
     task = task_query(db).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
-    require_project(db, task.project_id)
+    require_project_access(db, task.project_id, user_id)
     return task
 
 def generate_task_key(project: Project, db: Session) -> str:
@@ -69,6 +71,7 @@ def generate_task_key(project: Project, db: Session) -> str:
 
 @router.get("", response_model=List[TaskResponse])
 def get_tasks(
+    request: Request,
     project_id: str = Query(...),
     sprint_id: Optional[str] = Query(None),
     unsprinted: bool = Query(False),
@@ -77,7 +80,7 @@ def get_tasks(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    require_project(db, project_id)
+    require_project_access(db, project_id, get_request_auth(request).user.id)
     if sprint_id and unsprinted:
         raise HTTPException(422, "Choose either sprint_id or unsprinted")
     validate_sprint(db, project_id, sprint_id)
@@ -106,9 +109,11 @@ def get_tasks(
 @router.post("", response_model=TaskResponse, status_code=201)
 def create_task(
     payload: TaskCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    project = require_project(db, payload.project_id)
+    user_id = get_request_auth(request).user.id
+    project = require_project_access(db, payload.project_id, user_id).project
     validate_sprint(db, project.id, payload.sprint_id)
     validate_assignee(db, project.id, payload.assignee_id)
     if payload.assignee_id and any(value is not None for value in (payload.assignee_name, payload.assignee_avatar, payload.assignee_initials)):
@@ -166,20 +171,22 @@ def create_task(
                 )
                 db.add(subtask)
     db.commit()
-    task = find_task(db, task.id)
+    task = find_task(db, task.id, user_id)
     return task_result(task, db)
 
 @router.get("/{task_id}", response_model=TaskResponse)
-def get_task(task_id: str, db: Session = Depends(get_db)):
-    return task_result(find_task(db, task_id), db)
+def get_task(task_id: str, request: Request, db: Session = Depends(get_db)):
+    return task_result(find_task(db, task_id, get_request_auth(request).user.id), db)
 
 @router.patch("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: str,
     payload: TaskUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    task = find_task(db, task_id)
+    user_id = get_request_auth(request).user.id
+    task = find_task(db, task_id, user_id)
 
     update_data = payload.model_dump(exclude_unset=True)
     if "sprint_id" in update_data:
@@ -200,11 +207,11 @@ def update_task(
 
     db.commit()
     db.refresh(task)
-    return task_result(find_task(db, task_id), db)
+    return task_result(find_task(db, task_id, user_id), db)
 
 @router.delete("/{task_id}", status_code=200)
-def delete_task(task_id: str, db: Session = Depends(get_db)):
-    task = find_task(db, task_id)
+def delete_task(task_id: str, request: Request, db: Session = Depends(get_db)):
+    task = find_task(db, task_id, get_request_auth(request).user.id)
 
     old_status = task.status
     old_pos = task.position
@@ -227,9 +234,11 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
 def reorder_task(
     task_id: str,
     payload: TaskReorder,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    task = find_task(db, task_id)
+    user_id = get_request_auth(request).user.id
+    task = find_task(db, task_id, user_id)
 
     old_status = task.status
     old_position = task.position
@@ -283,16 +292,17 @@ def reorder_task(
     task.position = new_position
     db.commit()
     db.refresh(task)
-    return task_result(find_task(db, task_id), db)
+    return task_result(find_task(db, task_id, user_id), db)
 
 # Subtasks CRUD
 @router.post("/{task_id}/subtasks", response_model=SubtaskResponse, status_code=201)
 def add_subtask(
     task_id: str,
     payload: SubtaskCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    task = find_task(db, task_id)
+    task = find_task(db, task_id, get_request_auth(request).user.id)
 
     max_pos = db.query(func.max(Subtask.position)).filter(Subtask.task_id == task_id).scalar()
     new_position = (max_pos + 1) if max_pos is not None else 0
@@ -313,9 +323,10 @@ def update_subtask(
     task_id: str,
     subtask_id: str,
     payload: SubtaskUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    find_task(db, task_id)
+    find_task(db, task_id, get_request_auth(request).user.id)
     subtask = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()
     if not subtask:
         raise HTTPException(status_code=404, detail="Subtask not found")
@@ -332,9 +343,10 @@ def update_subtask(
 def delete_subtask(
     task_id: str,
     subtask_id: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    find_task(db, task_id)
+    find_task(db, task_id, get_request_auth(request).user.id)
     subtask = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()
     if not subtask:
         raise HTTPException(status_code=404, detail="Subtask not found")

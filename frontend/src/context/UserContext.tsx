@@ -1,30 +1,46 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
-import { api, type ApiUser, type UserPayload } from "@/services/api"
+import { ApiError, api, type ApiUser, type RegisterResponse, type UserPayload } from "@/services/api"
 
-const USER_PREFERENCE = "management_web_user_id"
-type IdentityDialogMode = "select" | "create" | "edit" | null
+export type IdentityDialogMode = "login" | "register" | "verify" | "edit" | null
+
 interface UserStore {
   usersById: Record<string, ApiUser>
   currentUser: ApiUser | null
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  selectUser: (id: string | null) => void
   ingestUsers: (users: ApiUser[]) => void
-  saveProfile: (payload: UserPayload, id?: string) => Promise<ApiUser>
+  login: (email: string, password: string) => Promise<ApiUser>
+  register: (displayName: string, email: string, password: string) => Promise<RegisterResponse>
+  verifyEmail: (token: string) => Promise<string>
+  resendVerification: (email: string) => Promise<string>
+  logout: () => Promise<void>
+  saveProfile: (payload: Omit<UserPayload, "email">) => Promise<ApiUser>
   dialogMode: IdentityDialogMode
   openIdentity: (mode: IdentityDialogMode) => void
 }
+
 const UserContext = createContext<UserStore | null>(null)
+
+function clearScopedPreferences() {
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index)
+    if (key?.startsWith("management_web_project_id:") || key?.startsWith("management_web_workspace_id:")) {
+      localStorage.removeItem(key)
+    }
+  }
+  localStorage.removeItem("management_web_user_id")
+}
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [usersById, setUsers] = useState<Record<string, ApiUser>>({})
-  const [currentId, setCurrentId] = useState<string | null>(() => localStorage.getItem(USER_PREFERENCE))
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialogMode, openIdentity] = useState<IdentityDialogMode>(null)
   const sequence = useRef(0)
   const controller = useRef<AbortController | null>(null)
+
   const ingestUsers = useCallback((items: ApiUser[]) => setUsers((previous) => {
     const next = { ...previous }
     for (const item of items) {
@@ -32,11 +48,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     return next
   }), [])
-  const selectUser = useCallback((id: string | null) => {
-    setCurrentId(id)
-    if (id) localStorage.setItem(USER_PREFERENCE, id)
-    else localStorage.removeItem(USER_PREFERENCE)
+
+  const clearIdentity = useCallback(() => {
+    ++sequence.current
+    controller.current?.abort()
+    setCurrentUser(null)
+    setUsers({})
+    setError(null)
+    clearScopedPreferences()
   }, [])
+
   const refresh = useCallback(async () => {
     const requestId = ++sequence.current
     controller.current?.abort()
@@ -45,36 +66,69 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const items: ApiUser[] = []
-      let page = 1
-      while (true) {
-        const result = await api.getUsers(page++, abort.signal)
-        items.push(...result.items)
-        if (items.length >= result.total || !result.items.length) break
-      }
-      if (requestId !== sequence.current) return
-      setUsers(Object.fromEntries(items.map((user) => [user.id, user])))
-      const saved = localStorage.getItem(USER_PREFERENCE)
-      if (saved && !items.some((user) => user.id === saved && user.is_active)) selectUser(null)
+      const result = await api.getMe(abort.signal)
+      if (abort.signal.aborted || requestId !== sequence.current) return
+      setCurrentUser(result.user)
+      setUsers({ [result.user.id]: result.user })
     } catch (failure) {
-      if (!abort.signal.aborted && requestId === sequence.current) {
-        setError(failure instanceof Error ? failure.message : "Could not load workspace identities.")
+      if (abort.signal.aborted || requestId !== sequence.current) return
+      if (failure instanceof ApiError && failure.status === 401) {
+        setCurrentUser(null)
         setUsers({})
+      } else {
+        setCurrentUser(null)
+        setUsers({})
+        setError(failure instanceof Error ? failure.message : "Could not restore your session.")
       }
     } finally {
       if (requestId === sequence.current) setLoading(false)
     }
-  }, [selectUser])
-  useEffect(() => { void refresh(); return () => { ++sequence.current; controller.current?.abort() } }, [refresh])
-  const saveProfile = useCallback(async (payload: UserPayload, id?: string) => {
-    const user = id ? await api.updateUser(id, payload) : await api.createUser(payload)
+  }, [])
+
+  useEffect(() => {
+    void refresh()
+    const unauthorized = () => clearIdentity()
+    window.addEventListener("management-web:unauthorized", unauthorized)
+    return () => {
+      ++sequence.current
+      controller.current?.abort()
+      window.removeEventListener("management-web:unauthorized", unauthorized)
+    }
+  }, [clearIdentity, refresh])
+
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await api.login(email, password)
+    setCurrentUser(result.user)
+    setUsers({ [result.user.id]: result.user })
+    setError(null)
+    return result.user
+  }, [])
+
+  const register = useCallback(
+    (displayName: string, email: string, password: string) => api.register({ display_name: displayName, email, password }),
+    [],
+  )
+  const verifyEmail = useCallback(async (token: string) => (await api.verifyEmail(token)).message, [])
+  const resendVerification = useCallback(async (email: string) => (await api.resendVerification(email)).message, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await api.logout()
+    } finally {
+      clearIdentity()
+      openIdentity("login")
+    }
+  }, [clearIdentity])
+
+  const saveProfile = useCallback(async (payload: Omit<UserPayload, "email">) => {
+    if (!currentUser) throw new Error("Authentication required")
+    const user = await api.updateUser(currentUser.id, payload)
+    setCurrentUser(user)
     ingestUsers([user])
-    if (!id) selectUser(user.id)
     return user
-  }, [ingestUsers, selectUser])
-  const candidate = currentId ? usersById[currentId] : null
-  const currentUser = !loading && !error && candidate?.is_active ? candidate : null
-  return <UserContext.Provider value={{ usersById, currentUser, loading, error, refresh, selectUser, ingestUsers, saveProfile, dialogMode, openIdentity }}>{children}</UserContext.Provider>
+  }, [currentUser, ingestUsers])
+
+  return <UserContext.Provider value={{ usersById, currentUser, loading, error, refresh, ingestUsers, login, register, verifyEmail, resendVerification, logout, saveProfile, dialogMode, openIdentity }}>{children}</UserContext.Provider>
 }
 
 export function useUsers() {

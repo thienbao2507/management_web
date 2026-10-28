@@ -7,6 +7,7 @@ from app.models.project_resource import ProjectResource
 from app.models.user import User
 from app.models.project_membership import ProjectMembership
 from app.models.workspace import Workspace
+from app.models.auth import AuthAccount, AuthSession, AuthEmailVerification, AuthRateLimit
 
 __all__ = [
     "Base",
@@ -18,4 +19,8 @@ __all__ = [
     "User",
     "ProjectMembership",
     "Workspace",
+    "AuthAccount",
+    "AuthSession",
+    "AuthEmailVerification",
+    "AuthRateLimit",
 ]

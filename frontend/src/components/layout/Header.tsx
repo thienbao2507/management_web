@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   isResourcesView,
   members, membersLoading, membersError, onMembersClick, sprintLabel,
 }) => {
-  const { currentUser, usersById, openIdentity } = useUsers()
+  const { currentUser, usersById, openIdentity, logout } = useUsers()
   return (
     <header className="flex h-13 shrink-0 items-center justify-between border-b border-border/80 bg-card/80 px-3.5 sm:px-4 backdrop-blur-md select-none z-10">
       {/* Left: Mobile Toggle / Breadcrumb / Workspace info */}
@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Workspace hierarchy breadcrumb */}
         <div className="flex items-center gap-1.5 truncate">
           <span className="text-xs font-bold text-foreground truncate">
-            {legacyMode ? "Unassigned Projects" : currentWorkspace?.name || "No Workspace"}
+            {legacyMode ? "Shared with me" : currentWorkspace?.name || "No Workspace"}
           </span>
           {currentProject && (
             <>
@@ -209,15 +209,15 @@ export const Header: React.FC<HeaderProps> = ({
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="font-semibold">{currentUser?.display_name || "No identity selected"}</span>
+                <span className="font-semibold">{currentUser?.display_name || "Not signed in"}</span>
                 <span className="text-[10px] text-muted-foreground">
-                  {currentUser?.job_title || "User profile preference"}
+                  {currentUser?.job_title || "Authenticated profile"}
                 </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => openIdentity("select")}>Choose identity</DropdownMenuItem>
             {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
             <DropdownMenuItem>Workspace Settings</DropdownMenuItem>
             <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
           </DropdownMenuContent>

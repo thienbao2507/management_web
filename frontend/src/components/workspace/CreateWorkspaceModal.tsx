@@ -56,13 +56,13 @@ export function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProp
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>Create Workspace</DialogTitle>
-          <DialogDescription>Create one personal Workspace for the selected profile. This does not sign you in or assign legacy Projects.</DialogDescription>
+          <DialogDescription>Create one personal Workspace owned by your authenticated account.</DialogDescription>
         </DialogHeader>
         {error && <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
         <form className="space-y-3.5" onSubmit={submit}>
           <label className="block space-y-1 text-xs font-semibold">
-            Owner profile
-            <Input value={currentUser?.display_name || "No active profile"} readOnly disabled />
+            Owner account
+            <Input value={currentUser?.display_name || "Not signed in"} readOnly disabled />
           </label>
           <label className="block space-y-1 text-xs font-semibold">
             Workspace name <span className="text-red-500">*</span>

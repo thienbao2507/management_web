@@ -19,6 +19,17 @@ class Settings:
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:6006,http://127.0.0.1:6006,http://localhost:5173,http://127.0.0.1:5173").split(",")
         if origin.strip()
     ]
+    AUTH_SESSION_DAYS: int = int(os.getenv("AUTH_SESSION_DAYS", "7"))
+    AUTH_COOKIE_SECURE: str = os.getenv("AUTH_COOKIE_SECURE", "auto").lower()
+    AUTH_SESSION_COOKIE: str = os.getenv("AUTH_SESSION_COOKIE", "mw_session")
+    AUTH_CSRF_COOKIE: str = os.getenv("AUTH_CSRF_COOKIE", "mw_csrf")
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:6006").rstrip("/")
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
+    SMTP_STARTTLS: bool = os.getenv("SMTP_STARTTLS", "true").lower() in {"1", "true", "yes", "on"}
 
 
 settings = Settings()

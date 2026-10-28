@@ -1,23 +1,19 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
-from app.models import Project, Sprint, Task, User
+from app.core.auth import get_request_auth, require_authenticated_request
+from app.core.authorization import require_project_access
+from app.models import Sprint, Task
+from app.models.auth import AuthAccount
 from app.models.project_membership import ProjectMembership
 from app.schemas.user import UserResponse
 from app.schemas.sprint import SprintResponse
+from app.schemas.auth import normalize_login_email
 
-router = APIRouter(prefix="/projects", tags=["workspace"])
-
-
-def require_project(db: Session, project_id: str):
-    project = db.query(Project).filter(Project.id == project_id, Project.is_archived.is_(False)).first()
-    if not project:
-        raise HTTPException(404, "Active project not found")
-    return project
-
+router = APIRouter(prefix="/projects", tags=["workspace"], dependencies=[Depends(require_authenticated_request)])
 
 def identity_schema_ready(db: Session) -> bool:
     if "identity_schema_ready" not in db.info:
@@ -37,7 +33,12 @@ def require_identity_schema(db: Session):
 
 class MemberCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    user_id: str = Field(min_length=1, max_length=36)
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, value):
+        return normalize_login_email(value)
 
 
 class MemberResponse(BaseModel):
@@ -49,17 +50,21 @@ class MemberResponse(BaseModel):
 
 
 @router.get("/{project_id}/members", response_model=list[MemberResponse])
-def get_members(project_id: str, db: Session = Depends(get_db)):
-    require_project(db, project_id)
+def get_members(project_id: str, request: Request, db: Session = Depends(get_db)):
+    require_project_access(db, project_id, get_request_auth(request).user.id)
     require_identity_schema(db)
     return db.query(ProjectMembership).options(joinedload(ProjectMembership.user)).filter(ProjectMembership.project_id == project_id).order_by(ProjectMembership.created_at, ProjectMembership.user_id).all()
 
 
 @router.post("/{project_id}/members", response_model=MemberResponse, status_code=201)
-def add_member(project_id: str, payload: MemberCreate, db: Session = Depends(get_db)):
-    require_project(db, project_id)
+def add_member(project_id: str, payload: MemberCreate, request: Request, db: Session = Depends(get_db)):
+    require_project_access(db, project_id, get_request_auth(request).user.id, owner_required=True)
     require_identity_schema(db)
-    user = db.query(User).filter(User.id == payload.user_id).with_for_update().first()
+    account = db.query(AuthAccount).filter(
+        AuthAccount.email == payload.email,
+        AuthAccount.email_verified_at.is_not(None),
+    ).with_for_update().first()
+    user = account.user if account else None
     if not user or not user.is_active:
         raise HTTPException(404, "Active user not found")
     if db.get(ProjectMembership, (project_id, user.id)):
@@ -72,8 +77,8 @@ def add_member(project_id: str, payload: MemberCreate, db: Session = Depends(get
 
 
 @router.delete("/{project_id}/members/{user_id}")
-def remove_member(project_id: str, user_id: str, db: Session = Depends(get_db)):
-    require_project(db, project_id)
+def remove_member(project_id: str, user_id: str, request: Request, db: Session = Depends(get_db)):
+    require_project_access(db, project_id, get_request_auth(request).user.id, owner_required=True)
     require_identity_schema(db)
     member = db.query(ProjectMembership).filter_by(project_id=project_id, user_id=user_id).with_for_update().first()
     if not member:
@@ -86,6 +91,6 @@ def remove_member(project_id: str, user_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{project_id}/sprints", response_model=list[SprintResponse])
-def list_sprints(project_id: str, db: Session = Depends(get_db)):
-    require_project(db, project_id)
+def list_sprints(project_id: str, request: Request, db: Session = Depends(get_db)):
+    require_project_access(db, project_id, get_request_auth(request).user.id)
     return db.query(Sprint).filter(Sprint.project_id == project_id).order_by(Sprint.created_at, Sprint.id).all()

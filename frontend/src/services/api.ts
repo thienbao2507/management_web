@@ -51,6 +51,8 @@ export interface UserPayload { display_name: string; email?: string | null; job_
 export interface ApiMember { project_id: string; user_id: string; created_at: string; user: ApiUser }
 export interface ApiSprint { id: string; project_id: string; name: string; status: string; goal: string | null; start_date: string | null; end_date: string | null; created_at: string }
 export interface UserListResponse { items: ApiUser[]; total: number; page: number; page_size: number }
+export interface AuthSessionResponse { user: ApiUser; csrf_header: string; authenticated?: boolean }
+export interface RegisterResponse { status: "pending_verification"; message: string; email_delivery: "sent" | "failed" | "not_configured" }
 
 export interface ApiWorkspace {
   id: string
@@ -63,7 +65,6 @@ export interface ApiWorkspace {
 }
 
 export interface WorkspacePayload {
-  owner_user_id: string
   name: string
   description?: string | null
 }
@@ -137,6 +138,7 @@ export interface ResourceListParams {
   project_id?: string
   workspace_id?: string
   unassigned?: boolean
+  shared?: boolean
   resource_type?: ResourceType
   created_from?: string
   created_to?: string
@@ -146,16 +148,30 @@ export interface ResourceListParams {
 
 const API_BASE = "/api/v1"
 
+function cookieValue(name: string): string | null {
+  const prefix = `${encodeURIComponent(name)}=`
+  const entry = document.cookie.split("; ").find((value) => value.startsWith(prefix))
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : null
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const method = (options?.method || "GET").toUpperCase()
+  const csrfToken = !["GET", "HEAD", "OPTIONS"].includes(method) ? cookieValue("mw_csrf") : null
   const res = await fetch(`${API_BASE}${url}`, {
+    ...options,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
+      "X-Management-Web-Request": "1",
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...(options?.headers || {}),
     },
-    ...options,
   })
 
   if (!res.ok) {
+    if (res.status === 401 && url !== "/auth/me" && url !== "/auth/login") {
+      window.dispatchEvent(new Event("management-web:unauthorized"))
+    }
     if (res.status === 502) {
       throw new Error(
         "Backend FastAPI chưa được bật tại port 8000 (502 Bad Gateway). Hãy chạy backend trong terminal để kết nối Neon."
@@ -181,18 +197,28 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getUsers(page = 1, signal?: AbortSignal): Promise<UserListResponse> {
-    return request(`/users?include_inactive=true&page=${page}&page_size=200`, { signal })
+  getMe(signal?: AbortSignal): Promise<AuthSessionResponse> { return request("/auth/me", { signal }) },
+  register(payload: { display_name: string; email: string; password: string }): Promise<RegisterResponse> {
+    return request("/auth/register", { method: "POST", body: JSON.stringify(payload) })
   },
+  verifyEmail(token: string): Promise<{ message: string }> {
+    return request("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) })
+  },
+  resendVerification(email: string): Promise<{ message: string }> {
+    return request("/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }) })
+  },
+  login(email: string, password: string): Promise<AuthSessionResponse> {
+    return request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) })
+  },
+  logout(): Promise<{ message: string }> { return request("/auth/logout", { method: "POST", body: "{}" }) },
   getUser(id: string, signal?: AbortSignal): Promise<ApiUser> { return request(`/users/${encodeURIComponent(id)}`, { signal }) },
-  createUser(payload: UserPayload): Promise<ApiUser> { return request("/users", { method: "POST", body: JSON.stringify(payload) }) },
-  updateUser(id: string, payload: Partial<UserPayload> & { is_active?: boolean }): Promise<ApiUser> { return request(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }) },
+  updateUser(id: string, payload: Omit<Partial<UserPayload>, "email">): Promise<ApiUser> { return request(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }) },
   getMembers(projectId: string, signal?: AbortSignal): Promise<ApiMember[]> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { signal }) },
-  addMember(projectId: string, userId: string): Promise<ApiMember> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: JSON.stringify({ user_id: userId }) }) },
+  addMember(projectId: string, email: string): Promise<ApiMember> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: JSON.stringify({ email }) }) },
   removeMember(projectId: string, userId: string): Promise<{ message: string }> { return request(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE" }) },
   getSprints(projectId: string, signal?: AbortSignal): Promise<ApiSprint[]> { return request(`/projects/${encodeURIComponent(projectId)}/sprints`, { signal }) },
-  getWorkspaces(ownerUserId: string, signal?: AbortSignal): Promise<ApiWorkspace[]> {
-    return request(`/workspaces?owner_user_id=${encodeURIComponent(ownerUserId)}`, { signal })
+  getWorkspaces(signal?: AbortSignal): Promise<ApiWorkspace[]> {
+    return request("/workspaces", { signal })
   },
   createWorkspace(payload: WorkspacePayload): Promise<ApiWorkspace> {
     return request("/workspaces", { method: "POST", body: JSON.stringify(payload) })
@@ -201,11 +227,12 @@ export const api = {
   async getProjects(
     includeArchived = false,
     signal?: AbortSignal,
-    scope?: { workspace_id?: string; unassigned?: boolean }
+    scope?: { workspace_id?: string; unassigned?: boolean; shared?: boolean }
   ): Promise<ApiProject[]> {
     const query = new URLSearchParams({ include_archived: String(includeArchived) })
     if (scope?.workspace_id) query.set("workspace_id", scope.workspace_id)
     if (scope?.unassigned) query.set("unassigned", "true")
+    if (scope?.shared) query.set("shared", "true")
     return request<ApiProject[]>(`/projects?${query.toString()}`, { signal })
   },
 
@@ -352,6 +379,7 @@ export const api = {
     if (params.project_id) query.set("project_id", params.project_id)
     if (params.workspace_id) query.set("workspace_id", params.workspace_id)
     if (params.unassigned) query.set("unassigned", "true")
+    if (params.shared) query.set("shared", "true")
     if (params.resource_type) query.set("resource_type", params.resource_type)
     if (params.created_from) query.set("created_from", params.created_from)
     if (params.created_to) query.set("created_to", params.created_to)

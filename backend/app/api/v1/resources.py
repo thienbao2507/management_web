@@ -3,17 +3,17 @@ import unicodedata
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.workspaces import (
-    require_workspace,
     require_workspace_schema,
-    workspace_schema_ready,
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.auth import get_request_auth, require_authenticated_request
+from app.core.authorization import accessible_project_filter, require_project_access, require_workspace_owner
 from app.models.project import Project
 from app.models.project_resource import ProjectResource
 from app.schemas.project_resource import (
@@ -24,7 +24,7 @@ from app.schemas.project_resource import (
     ResourceType,
 )
 
-router = APIRouter(prefix="/resources", tags=["resources"])
+router = APIRouter(prefix="/resources", tags=["resources"], dependencies=[Depends(require_authenticated_request)])
 
 _VIETNAMESE_GROUPS = {
     "a": "áàảãạăắằẳẵặâấầẩẫậ",
@@ -89,17 +89,6 @@ def application_day_bounds(
     return start, end_exclusive
 
 
-def active_project_query(db: Session):
-    return db.query(Project).filter(Project.is_archived.is_(False))
-
-
-def get_active_project(db: Session, project_id: str) -> Project:
-    project = active_project_query(db).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Active project not found")
-    return project
-
-
 def resource_to_response(resource: ProjectResource) -> ProjectResourceResponse:
     return ProjectResourceResponse(
         id=resource.id,
@@ -115,20 +104,22 @@ def resource_to_response(resource: ProjectResource) -> ProjectResourceResponse:
     )
 
 
-def accessible_resource_query(db: Session):
+def accessible_resource_query(db: Session, user_id: str):
     return (
         db.query(ProjectResource)
         .join(Project, Project.id == ProjectResource.project_id)
-        .filter(Project.is_archived.is_(False))
+        .filter(Project.is_archived.is_(False), *accessible_project_filter(user_id))
     )
 
 
 @router.get("", response_model=ProjectResourceListResponse)
 def list_resources(
+    request: Request,
     q: str | None = Query(default=None, max_length=200),
     project_id: str | None = Query(default=None, min_length=1, max_length=36),
     workspace_id: str | None = Query(default=None, min_length=1, max_length=36),
     unassigned: bool = Query(default=False),
+    shared: bool = Query(default=False),
     resource_type: ResourceType | None = Query(default=None),
     created_from: date | None = Query(default=None),
     created_to: date | None = Query(default=None),
@@ -136,24 +127,33 @@ def list_resources(
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    if workspace_id and unassigned:
+    if sum(bool(value) for value in (workspace_id, unassigned, shared)) > 1:
         raise HTTPException(
             status_code=422,
-            detail="workspace_id and unassigned cannot be used together",
+            detail="Choose only one resource scope",
         )
+    user_id = get_request_auth(request).user.id
     start, end_exclusive = application_day_bounds(created_from, created_to)
     filters = []
 
     if project_id:
-        filters.append(ProjectResource.project_id == project_id.strip())
-    schema_ready = workspace_schema_ready(db)
+        project_id = project_id.strip()
+        require_project_access(db, project_id, user_id)
+        filters.append(ProjectResource.project_id == project_id)
     if workspace_id:
         require_workspace_schema(db)
         workspace_id = workspace_id.strip()
-        require_workspace(db, workspace_id)
+        require_workspace_owner(db, workspace_id, user_id)
         filters.append(Project.workspace_id == workspace_id)
-    elif unassigned and schema_ready:
-        filters.append(Project.workspace_id.is_(None))
+    elif unassigned:
+        filters.append(False)
+    elif shared:
+        from app.models.project_membership import ProjectMembership
+        from app.models.workspace import Workspace
+        filters.extend([
+            Project.id.in_(db.query(ProjectMembership.project_id).filter(ProjectMembership.user_id == user_id)),
+            Project.workspace_id.in_(db.query(Workspace.id).filter(Workspace.owner_user_id != user_id)),
+        ])
     if resource_type:
         filters.append(ProjectResource.resource_type == resource_type.value)
     if start:
@@ -182,7 +182,7 @@ def list_resources(
             )
         )
 
-    base_query = accessible_resource_query(db).filter(*filters)
+    base_query = accessible_resource_query(db, user_id).filter(*filters)
     total = base_query.with_entities(func.count(ProjectResource.id)).scalar() or 0
     resources = (
         base_query.options(joinedload(ProjectResource.project))
@@ -202,9 +202,10 @@ def list_resources(
 
 
 @router.get("/{resource_id}", response_model=ProjectResourceResponse)
-def get_resource(resource_id: str, db: Session = Depends(get_db)):
+def get_resource(resource_id: str, request: Request, db: Session = Depends(get_db)):
+    user_id = get_request_auth(request).user.id
     resource = (
-        accessible_resource_query(db)
+        accessible_resource_query(db, user_id)
         .options(joinedload(ProjectResource.project))
         .filter(ProjectResource.id == resource_id)
         .first()
@@ -219,8 +220,8 @@ def get_resource(resource_id: str, db: Session = Depends(get_db)):
     response_model=ProjectResourceResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_resource(payload: ProjectResourceCreate, db: Session = Depends(get_db)):
-    project = get_active_project(db, payload.project_id)
+def create_resource(payload: ProjectResourceCreate, request: Request, db: Session = Depends(get_db)):
+    project = require_project_access(db, payload.project_id, get_request_auth(request).user.id).project
     resource = ProjectResource(
         project_id=payload.project_id,
         title=payload.title,
@@ -240,10 +241,12 @@ def create_resource(payload: ProjectResourceCreate, db: Session = Depends(get_db
 def update_resource(
     resource_id: str,
     payload: ProjectResourceUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    user_id = get_request_auth(request).user.id
     resource = (
-        accessible_resource_query(db)
+        accessible_resource_query(db, user_id)
         .options(joinedload(ProjectResource.project))
         .filter(ProjectResource.id == resource_id)
         .first()
@@ -253,7 +256,8 @@ def update_resource(
 
     update_data = payload.model_dump(exclude_unset=True)
     if "project_id" in update_data:
-        resource.project = get_active_project(db, update_data["project_id"])
+        require_project_access(db, resource.project_id, user_id)
+        resource.project = require_project_access(db, update_data["project_id"], user_id).project
     if "resource_type" in update_data:
         update_data["resource_type"] = update_data["resource_type"].value
 
@@ -268,9 +272,9 @@ def update_resource(
 
 
 @router.delete("/{resource_id}")
-def delete_resource(resource_id: str, db: Session = Depends(get_db)):
+def delete_resource(resource_id: str, request: Request, db: Session = Depends(get_db)):
     resource = (
-        accessible_resource_query(db)
+        accessible_resource_query(db, get_request_auth(request).user.id)
         .filter(ProjectResource.id == resource_id)
         .first()
     )

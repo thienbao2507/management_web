@@ -8,7 +8,7 @@ interface WorkspaceStore {
   error: string | null
   scopeKey: string
   refresh: () => Promise<void>
-  createWorkspace: (payload: Omit<WorkspacePayload, "owner_user_id">) => Promise<ApiWorkspace>
+  createWorkspace: (payload: WorkspacePayload) => Promise<ApiWorkspace>
 }
 
 const WorkspaceContext = createContext<WorkspaceStore | null>(null)
@@ -39,7 +39,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const items = await api.getWorkspaces(userId, abort.signal)
+      const items = await api.getWorkspaces(abort.signal)
       if (abort.signal.aborted || requestId !== sequence.current || activeUserId.current !== userId) return
       const savedId = localStorage.getItem(`management_web_workspace_id:${userId}`)
       const selected = items.find((item) => item.id === savedId) || items[0] || null
@@ -61,10 +61,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return () => { ++sequence.current; activeController?.abort() }
   }, [refresh, userLoading])
 
-  const createWorkspace = useCallback(async (payload: Omit<WorkspacePayload, "owner_user_id">) => {
+  const createWorkspace = useCallback(async (payload: WorkspacePayload) => {
     const userId = currentUser?.id
-    if (!userId) throw new Error("Select an active User profile before creating a Workspace")
-    const created = await api.createWorkspace({ ...payload, owner_user_id: userId })
+    if (!userId) throw new Error("Sign in before creating a Workspace")
+    const created = await api.createWorkspace(payload)
     if (activeUserId.current === userId) {
       localStorage.setItem(`management_web_workspace_id:${userId}`, created.id)
       setWorkspace(created)

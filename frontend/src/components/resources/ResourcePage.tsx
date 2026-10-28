@@ -48,7 +48,7 @@ import { formatResourceDate, RESOURCE_TYPE_STYLES } from "./resourceUtils"
 
 interface ResourcePageProps {
   workspaceId?: string
-  unassigned: boolean
+  shared: boolean
   scopeKey: string
   projects: ApiProject[]
   selectedProject: ApiProject | null
@@ -69,7 +69,7 @@ const selectClassName =
 
 export const ResourcePage: React.FC<ResourcePageProps> = ({
   workspaceId,
-  unassigned,
+  shared,
   scopeKey,
   projects,
   selectedProject,
@@ -159,7 +159,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
         q: debouncedSearch || undefined,
         project_id: projectId || undefined,
         workspace_id: workspaceId,
-        unassigned,
+        shared,
         resource_type: resourceType || undefined,
         created_from: createdFrom || undefined,
         created_to: createdTo || undefined,
@@ -181,7 +181,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     })
 
     return () => controller.abort()
-  }, [createdFrom, createdTo, dateRangeError, debouncedSearch, page, projectId, refreshKey, resourceType, scopeKey, unassigned, workspaceId])
+  }, [createdFrom, createdTo, dateRangeError, debouncedSearch, page, projectId, refreshKey, resourceType, scopeKey, shared, workspaceId])
 
   const groupedResources = useMemo(() => {
     const groups = new Map<string, ApiResource[]>()
@@ -282,7 +282,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight">Project Resources</h1>
-            <p className="mt-1 text-xs text-muted-foreground">{unassigned ? "Resources attached to unassigned legacy Projects." : "Resources limited to the selected Workspace."}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{shared ? "Resources from Projects shared with you." : "Resources limited to your personal Workspace."}</p>
           </div>
           <Button onClick={openCreateForm} className="gap-1.5 self-start sm:hidden" disabled={projects.length === 0}>
             <Plus className="h-4 w-4" /> Add Resource

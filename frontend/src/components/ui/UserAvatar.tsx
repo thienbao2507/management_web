@@ -13,5 +13,5 @@ export function resolveUserAvatar(user?: ApiUser | null) {
   return { src: user?.custom_avatar_url || undefined, fallbackSrc: user ? approvedAvatarAssets[user.default_avatar_key] : undefined, fallback: userInitials(user?.display_name) }
 }
 export function UserAvatar({ user, ...props }: Omit<AvatarProps, "fallback" | "src" | "fallbackSrc"> & { user?: ApiUser | null }) {
-  return <Avatar {...props} {...resolveUserAvatar(user)} identityKey={user?.id || "neutral"} alt={user?.display_name || "No identity selected"} />
+  return <Avatar {...props} {...resolveUserAvatar(user)} identityKey={user?.id || "anonymous"} alt={user?.display_name || "Not signed in"} />
 }

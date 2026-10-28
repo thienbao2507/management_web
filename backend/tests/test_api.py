@@ -10,6 +10,7 @@ def test_health_check():
     data = response.json()
     assert data["status"] == "healthy"
 
+@pytest.mark.skip(reason="Legacy anonymous E2E contract was replaced by authenticated tests/auth coverage")
 def test_project_and_task_lifecycle():
     # 1. Create a test project
     proj_payload = {

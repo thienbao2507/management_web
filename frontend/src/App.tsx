@@ -34,10 +34,10 @@ function primaryForView(view: SecondaryNavKey): NavItemKey {
 }
 
 export function AppContent() {
-  const { currentUser, loading: identityLoading, error: identityError, openIdentity, ingestUsers } = useUsers()
+  const { currentUser, loading: identityLoading, error: identityError, refresh: refreshIdentity, openIdentity, ingestUsers } = useUsers()
   const { workspace: currentWorkspace, loading: workspaceLoading, error: workspaceError, scopeKey: workspaceScopeKey, refresh: refreshWorkspace } = useWorkspace()
-  const [legacyMode, setLegacyMode] = useState(false)
-  const parentScopeKey = legacyMode ? JSON.stringify([currentUser?.id || "neutral", "unassigned"]) : workspaceScopeKey
+  const [sharedMode, setSharedMode] = useState(false)
+  const parentScopeKey = sharedMode ? JSON.stringify([currentUser?.id || "anonymous", "shared"]) : workspaceScopeKey
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   // Navigation states
   const [activePrimaryNav, setActivePrimaryNav] = useState<NavItemKey>(() => primaryForView(readView()))
@@ -81,7 +81,7 @@ export function AppContent() {
   const workspace = useProjectWorkspace(selectedProject?.id, currentUser?.id, sprintFilter, parentScopeKey)
   const { tasks, tasksLoading: isLoadingTasks, members, membersLoading, membersError, sprints, sprintsError } = workspace
   const setTasks = workspace.mutateTasks
-  const projectPreferenceKey = `management_web_project_id:${currentUser?.id || "neutral"}:${legacyMode ? "unassigned" : currentWorkspace?.id || "no-workspace"}`
+  const projectPreferenceKey = `management_web_project_id:${currentUser?.id || "anonymous"}:${sharedMode ? "shared" : currentWorkspace?.id || "no-workspace"}`
   const projectRequest = useRef(0)
   const projectAbort = useRef<AbortController | null>(null)
   const activePreference = useRef(projectPreferenceKey)
@@ -100,13 +100,13 @@ export function AppContent() {
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false)
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] = useState(false)
 
-  // Load Projects only inside the explicit Workspace or unassigned scope.
+  // Load Projects only inside the personal Workspace or explicit shared scope.
   const loadProjects = useCallback(async () => {
     const requestId = ++projectRequest.current
     projectAbort.current?.abort()
     const controller = new AbortController()
     projectAbort.current = controller
-    if (!legacyMode && !currentWorkspace) {
+    if (!sharedMode && !currentWorkspace) {
       setProjects([])
       setSelectedProject(null)
       setIsLoadingProjects(false)
@@ -119,7 +119,7 @@ export function AppContent() {
       const data = await api.getProjects(
         false,
         controller.signal,
-        legacyMode ? { unassigned: true } : { workspace_id: currentWorkspace?.id }
+        sharedMode ? { shared: true } : { workspace_id: currentWorkspace?.id }
       )
       if (controller.signal.aborted || projectRequest.current !== requestId || activePreference.current !== projectPreferenceKey) return
       setProjects(data)
@@ -142,7 +142,7 @@ export function AppContent() {
     } finally {
       if (!controller.signal.aborted && projectRequest.current === requestId) setIsLoadingProjects(false)
     }
-  }, [currentWorkspace, legacyMode, projectPreferenceKey])
+  }, [currentWorkspace, sharedMode, projectPreferenceKey])
 
   useEffect(() => {
     if (!identityLoading && !workspaceLoading) void loadProjects()
@@ -150,7 +150,7 @@ export function AppContent() {
   }, [loadProjects, identityLoading, workspaceLoading])
 
   useEffect(() => {
-    setLegacyMode(false)
+    setSharedMode(false)
   }, [currentUser?.id])
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export function AppContent() {
   }
 
   const handleProjectCreated = (newProject: ApiProject) => {
-    if (legacyMode || !currentWorkspace || newProject.workspace_id !== currentWorkspace.id) return
+    if (sharedMode || !currentWorkspace || newProject.workspace_id !== currentWorkspace.id) return
     setProjects((prev) => [newProject, ...prev])
     if (activePreference.current === projectPreferenceKey) {
       localStorage.setItem(projectPreferenceKey, newProject.id)
@@ -222,8 +222,8 @@ export function AppContent() {
 
   const handleQuickAdd = (status: "backlog" | "todo" | "in_progress" | "done") => {
     if (!selectedProject) {
-      if (currentWorkspace && !legacyMode) setIsCreateProjectModalOpen(true)
-      else if (!legacyMode) setIsCreateWorkspaceModalOpen(true)
+      if (currentWorkspace && !sharedMode) setIsCreateProjectModalOpen(true)
+      else if (!sharedMode) setIsCreateWorkspaceModalOpen(true)
       return
     }
     setCreateTaskDefaultStatus(status)
@@ -286,13 +286,13 @@ export function AppContent() {
         currentWorkspace={currentWorkspace}
         workspaceLoading={workspaceLoading}
         workspaceError={workspaceError}
-        legacyMode={legacyMode}
+        legacyMode={sharedMode}
         projects={projects}
         selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
         onCreateProjectClick={() => setIsCreateProjectModalOpen(true)}
         onCreateWorkspaceClick={() => setIsCreateWorkspaceModalOpen(true)}
-        onSelectUnassigned={() => setLegacyMode((value) => !value)}
+        onSelectUnassigned={() => setSharedMode((value) => !value)}
         activeItem={activeSecondaryNav}
         onSelectItem={navigateView}
         isCollapsed={isSecondaryCollapsed}
@@ -330,7 +330,7 @@ export function AppContent() {
                   currentWorkspace={currentWorkspace}
                   workspaceLoading={workspaceLoading}
                   workspaceError={workspaceError}
-                  legacyMode={legacyMode}
+                  legacyMode={sharedMode}
                   projects={projects}
                   selectedProject={selectedProject}
                   onSelectProject={(p) => {
@@ -346,7 +346,7 @@ export function AppContent() {
                     setIsMobileMenuOpen(false)
                   }}
                   onSelectUnassigned={() => {
-                    setLegacyMode((value) => !value)
+                    setSharedMode((value) => !value)
                     setIsMobileMenuOpen(false)
                   }}
                   activeItem={activeSecondaryNav}
@@ -370,7 +370,7 @@ export function AppContent() {
         {/* Header */}
         <Header
           currentWorkspace={currentWorkspace}
-          legacyMode={legacyMode}
+          legacyMode={sharedMode}
           currentProject={selectedProject}
           searchQuery={isResourcesView ? resourceSearch : searchQuery}
           onSearchChange={isResourcesView ? setResourceSearch : setSearchQuery}
@@ -393,16 +393,16 @@ export function AppContent() {
         />
 
         {/* Global Error Alert Banner */}
-        {identityError && <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground"><span>{identityError} No User profile is assumed.</span><Button variant="outline" size="sm" onClick={() => openIdentity("select")}>Choose User profile</Button></div>}
-        {((!legacyMode && workspaceError) || apiError || workspace.tasksError) && (
+        {identityError && <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground"><span>{identityError}</span><Button variant="outline" size="sm" onClick={() => void refreshIdentity()}>Retry</Button></div>}
+        {((!sharedMode && workspaceError) || apiError || workspace.tasksError) && (
           <div className="flex items-center justify-between bg-red-500/10 border-b border-red-500/30 px-4 py-2 text-xs text-red-600 dark:text-red-400">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{(!legacyMode && workspaceError) || apiError || workspace.tasksError}</span>
+              <span>{(!sharedMode && workspaceError) || apiError || workspace.tasksError}</span>
             </div>
             <button
               type="button"
-              onClick={() => !legacyMode && workspaceError ? void refreshWorkspace() : apiError || !selectedProject ? void loadProjects() : workspace.refresh()}
+              onClick={() => !sharedMode && workspaceError ? void refreshWorkspace() : apiError || !selectedProject ? void loadProjects() : workspace.refresh()}
               className="flex items-center gap-1 font-semibold hover:underline"
             >
               <RefreshCw className="h-3 w-3" /> Retry
@@ -415,34 +415,34 @@ export function AppContent() {
           {identityLoading ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span>Loading User profiles...</span>
+              <span>Restoring your session...</span>
             </div>
           ) : !currentUser ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <h2 className="text-base font-bold">Choose a User profile</h2>
-              <p className="max-w-sm text-xs text-muted-foreground">A real active profile is required before loading or creating a personal Workspace. Profile selection is not authentication.</p>
-              <Button onClick={() => openIdentity("select")}>Choose User profile</Button>
+              <h2 className="text-base font-bold">Sign in to Management Web</h2>
+              <p className="max-w-sm text-xs text-muted-foreground">Use your verified account to access your personal Workspace and Projects shared with you.</p>
+              <div className="flex gap-2"><Button onClick={() => openIdentity("login")}>Sign in</Button><Button variant="outline" onClick={() => openIdentity("register")}>Register</Button></div>
             </div>
-          ) : workspaceLoading && !legacyMode ? (
+          ) : workspaceLoading && !sharedMode ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Loading personal Workspace...</span></div>
-          ) : workspaceError && !legacyMode ? (
+          ) : workspaceError && !sharedMode ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
               <h2 className="text-base font-bold">Workspace unavailable</h2>
               <p className="max-w-md text-xs text-muted-foreground">{workspaceError}</p>
-              <div className="flex gap-2"><Button variant="outline" onClick={() => void refreshWorkspace()}>Retry</Button><Button variant="outline" onClick={() => setLegacyMode(true)}>View unassigned Projects</Button></div>
+              <div className="flex gap-2"><Button variant="outline" onClick={() => void refreshWorkspace()}>Retry</Button><Button variant="outline" onClick={() => setSharedMode(true)}>View shared Projects</Button></div>
             </div>
-          ) : !currentWorkspace && !legacyMode ? (
+          ) : !currentWorkspace && !sharedMode ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
               <h2 className="text-base font-bold">No personal Workspace yet</h2>
-              <p className="max-w-sm text-xs text-muted-foreground">Create a Workspace explicitly for {currentUser.display_name}. Existing Projects will remain unassigned.</p>
-              <div className="flex gap-2"><Button onClick={() => setIsCreateWorkspaceModalOpen(true)}>Create Workspace</Button><Button variant="outline" onClick={() => setLegacyMode(true)}>View unassigned Projects</Button></div>
+              <p className="max-w-sm text-xs text-muted-foreground">Create a personal Workspace for {currentUser.display_name}, or open a Project shared with your account.</p>
+              <div className="flex gap-2"><Button onClick={() => setIsCreateWorkspaceModalOpen(true)}>Create Workspace</Button><Button variant="outline" onClick={() => setSharedMode(true)}>View shared Projects</Button></div>
             </div>
           ) : isLoadingProjects ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Loading scoped Projects...</span></div>
           ) : apiError && projects.length === 0 ? null : isResourcesView ? (
             <ResourcePage
-              workspaceId={legacyMode ? undefined : currentWorkspace?.id}
-              unassigned={legacyMode}
+              workspaceId={sharedMode ? undefined : currentWorkspace?.id}
+              shared={sharedMode}
               scopeKey={parentScopeKey}
               projects={projects}
               selectedProject={selectedProject}
@@ -456,21 +456,21 @@ export function AppContent() {
                 <FolderPlus className="h-7 w-7" />
               </div>
               <h2 className="text-base font-bold text-foreground">
-                {legacyMode ? "No unassigned Projects" : "No Projects in this Workspace"}
+                {sharedMode ? "No shared Projects" : "No Projects in this Workspace"}
               </h2>
               <p className="mt-2 text-xs text-muted-foreground max-w-sm leading-relaxed">
-                {legacyMode ? "No legacy Projects remain in the explicit unassigned scope." : "Create the first Project inside this Workspace to start managing tasks."}
+                {sharedMode ? "No Projects have been shared with your verified account." : "Create the first Project inside this Workspace to start managing tasks."}
               </p>
               <Button
-                onClick={() => legacyMode ? setLegacyMode(false) : setIsCreateProjectModalOpen(true)}
+                onClick={() => sharedMode ? setSharedMode(false) : setIsCreateProjectModalOpen(true)}
                 className="mt-4 gap-2 font-semibold shadow"
               >
                 <FolderPlus className="h-4 w-4" />
-                <span>{legacyMode ? "Back to Workspace" : "Create First Project"}</span>
+                <span>{sharedMode ? "Back to Workspace" : "Create First Project"}</span>
               </Button>
             </div>
           ) : activeSecondaryNav === "team" && selectedProject ? (
-            <ProjectMembers key={selectedProject.id} projectId={selectedProject.id} members={members} loading={membersLoading} error={membersError} onRefresh={workspace.refresh} />
+            <ProjectMembers key={selectedProject.id} projectId={selectedProject.id} members={members} loading={membersLoading} error={membersError} onRefresh={workspace.refresh} canManage={!sharedMode} />
           ) : activeSecondaryNav === "active_sprint" ? (
             isLoadingTasks ? (
               <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -562,7 +562,7 @@ export function AppContent() {
       <CreateWorkspaceModal open={isCreateWorkspaceModalOpen} onClose={() => setIsCreateWorkspaceModalOpen(false)} />
 
       {/* Create Project is available only inside a real Workspace. */}
-      {currentWorkspace && !legacyMode && <CreateProjectModal
+      {currentWorkspace && !sharedMode && <CreateProjectModal
         key={currentWorkspace.id}
         open={isCreateProjectModalOpen}
         workspace={currentWorkspace}

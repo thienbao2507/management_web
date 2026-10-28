@@ -39,9 +39,27 @@ class UserCreate(BaseModel):
         return validate_http_url(value) if value else None
 
 
-class UserUpdate(UserCreate):
+class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     display_name: str | None = None
-    is_active: bool = True
+    job_title: str | None = None
+    custom_avatar_url: str | None = None
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def name_valid(cls, value):
+        return normalize_required_text(value, max_length=255, field_name="Display name") if value is not None else None
+
+    @field_validator("job_title", mode="before")
+    @classmethod
+    def job_valid(cls, value):
+        return normalize_optional_text(value, max_length=150, field_name="Job title")
+
+    @field_validator("custom_avatar_url", mode="before")
+    @classmethod
+    def avatar_valid(cls, value):
+        value = normalize_optional_text(value, max_length=2048, field_name="Custom avatar URL")
+        return validate_http_url(value) if value else None
 
 
 class UserResponse(BaseModel):

@@ -62,9 +62,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           />
           <div>
             <h3 className="text-xs font-semibold text-foreground">
-              {currentUser?.display_name || "No identity selected"}
+              {currentUser?.display_name || "Not signed in"}
             </h3>
-            <p className="text-[10px] text-muted-foreground">{currentUser?.job_title || "Workspace profile"}</p>
+            <p className="text-[10px] text-muted-foreground">{currentUser?.job_title || "Authenticated profile"}</p>
           </div>
         </div>
 

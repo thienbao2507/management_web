@@ -119,7 +119,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             size="sm"
             onClick={() => setActiveFilter("my")}
             disabled={!currentUser}
-            title={!currentUser ? "Choose a workspace identity first" : "Tasks assigned to this User ID"}
+            title={!currentUser ? "Sign in first" : "Tasks assigned to your account"}
             className="gap-1.5"
           >
             <UserAvatar user={currentUser} size="xs" />

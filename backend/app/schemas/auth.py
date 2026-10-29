@@ -22,8 +22,8 @@ def normalize_login_email(value: Any) -> str:
 def validate_password(value: Any) -> str:
     if not isinstance(value, str):
         raise ValueError("Password must be a string")
-    if len(value) < 15 or len(value) > 128:
-        raise ValueError("Password must be between 15 and 128 characters")
+    if len(value) < 8 or len(value) > 128:
+        raise ValueError("Password must be between 8 and 128 characters")
     return value
 
 
@@ -80,9 +80,9 @@ class AuthMessageResponse(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    status: Literal["pending_verification"]
+    status: Literal["pending_verification", "completed"]
     message: str
-    email_delivery: Literal["sent", "failed", "not_configured"]
+    email_delivery: Literal["sent", "failed", "not_configured"] = "not_configured"
 
 
 class AuthSessionResponse(BaseModel):

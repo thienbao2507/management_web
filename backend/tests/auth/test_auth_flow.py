@@ -43,6 +43,7 @@ def client(monkeypatch):
         return "sent"
 
     monkeypatch.setattr(auth_api, "send_verification_email", capture)
+    monkeypatch.setattr(auth_api, "verification_email_configured", lambda: True)
 
     def override_db():
         db = TestingSession()
@@ -215,6 +216,65 @@ def test_login_rate_limit_is_persisted_in_postgres(client):
     headers = preauth("127.0.18.1")
     assert [client.post("/api/v1/auth/login", json=payload, headers=headers).status_code for _ in range(8)] == [401] * 8
     assert client.post("/api/v1/auth/login", json=payload, headers=headers).status_code == 429
+
+
+def test_missing_schema_is_reported_before_registration(client, monkeypatch):
+    from app.core import auth as auth_core
+    monkeypatch.setattr(auth_core, "authentication_schema_ready", lambda db: False)
+    monkeypatch.setattr(auth_api, "authentication_schema_ready", lambda db: False)
+    status = client.get("/api/v1/auth/status")
+    assert status.status_code == 200
+    assert status.json()["ready"] is False
+    assert status.json()["registration_available"] is False
+    response = client.post("/api/v1/auth/register", json={"display_name": "Blocked", "email": f"blocked-{uuid.uuid4().hex}@example.com", "password": "valid password 12345"}, headers=preauth("127.0.19.1"))
+    assert response.status_code == 503
+    assert "Authentication" in response.json()["detail"]
+
+
+def test_missing_smtp_does_not_create_dead_end_account(client, monkeypatch):
+    monkeypatch.setattr(auth_api, "verification_email_configured", lambda: False)
+    email = f"no-mail-{uuid.uuid4().hex}@example.com"
+    assert client.get("/api/v1/auth/status").json() == {"ready": True, "registration_available": False, "message": "Registration is temporarily unavailable. Please contact the administrator."}
+    response = client.post("/api/v1/auth/register", json={"display_name": "No email", "email": email, "password": "valid password 12345"}, headers=preauth("127.0.19.2"))
+    assert response.status_code == 503
+    with TestingSession() as db:
+        assert db.query(AuthAccount).filter(AuthAccount.email == email).count() == 0
+        assert db.query(User).filter(User.email == email).count() == 0
+
+
+def test_legacy_activation_login_opens_original_workspace(client):
+    from app.core.auth_recovery import prepare_legacy_account
+    from app.models.workspace import Workspace
+    from app.models.task import Task
+    from app.models.project_resource import ProjectResource
+    suffix = uuid.uuid4().hex
+    email = f"restored-{suffix}@example.test"
+    password = "restore existing account 12345"
+    with TestingSession() as db, db.begin():
+        user = User(display_name="Original Owner", default_avatar_key="owl", is_active=True)
+        db.add(user)
+        db.flush()
+        workspace = Workspace(name="Original Workspace", owner_user_id=user.id, workspace_type="personal")
+        db.add(workspace)
+        db.flush()
+        project = Project(key=f"V{suffix[:8]}".upper(), name="Original Project", workspace_id=workspace.id)
+        db.add(project)
+        db.flush()
+        task = Task(project_id=project.id, task_key=f"{project.key}-1", title="Original task", category="Task", status="todo", priority="medium", position=0, weight=1)
+        resource = ProjectResource(project_id=project.id, title="Original resource", url="https://example.test", resource_type="Website", keywords=["original"])
+        db.add_all([task, resource])
+        db.flush()
+        user_id, workspace_id, project_id, task_id, resource_id = user.id, workspace.id, project.id, task.id, resource.id
+        token = prepare_legacy_account(db, user_id, workspace_id, email, password)
+
+    assert client.post("/api/v1/auth/login", json={"email": email, "password": password}, headers=preauth("127.0.20.1")).status_code == 403
+    assert client.post("/api/v1/auth/verify-email", json={"token": token}, headers=preauth("127.0.20.2")).status_code == 200
+    login = client.post("/api/v1/auth/login", json={"email": email, "password": password}, headers=preauth("127.0.20.3"))
+    assert login.status_code == 200 and login.json()["user"]["id"] == user_id
+    assert client.get("/api/v1/workspaces").json()[0]["id"] == workspace_id
+    assert client.get("/api/v1/projects", params={"workspace_id": workspace_id}).json()[0]["id"] == project_id
+    assert client.get("/api/v1/tasks", params={"project_id": project_id}).json()[0]["id"] == task_id
+    assert client.get("/api/v1/resources", params={"project_id": project_id}).json()["items"][0]["id"] == resource_id
 
 
 def test_concurrent_duplicate_registration_has_one_winner(client, monkeypatch):

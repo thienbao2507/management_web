@@ -52,7 +52,8 @@ export interface ApiMember { project_id: string; user_id: string; created_at: st
 export interface ApiSprint { id: string; project_id: string; name: string; status: string; goal: string | null; start_date: string | null; end_date: string | null; created_at: string }
 export interface UserListResponse { items: ApiUser[]; total: number; page: number; page_size: number }
 export interface AuthSessionResponse { user: ApiUser; csrf_header: string; authenticated?: boolean }
-export interface RegisterResponse { status: "pending_verification"; message: string; email_delivery: "sent" | "failed" | "not_configured" }
+export interface RegisterResponse { status: "pending_verification" | "completed"; message: string; email_delivery?: "sent" | "failed" | "not_configured" }
+export interface AuthStatus { ready: boolean; registration_available: boolean; message: string | null }
 
 export interface ApiWorkspace {
   id: string
@@ -197,6 +198,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getAuthStatus(signal?: AbortSignal): Promise<AuthStatus> { return request("/auth/status", { signal }) },
   getMe(signal?: AbortSignal): Promise<AuthSessionResponse> { return request("/auth/me", { signal }) },
   register(payload: { display_name: string; email: string; password: string }): Promise<RegisterResponse> {
     return request("/auth/register", { method: "POST", body: JSON.stringify(payload) })

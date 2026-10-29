@@ -10,8 +10,12 @@ from email.message import EmailMessage
 from urllib.parse import urlencode
 
 from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError, VerifyMismatchError
+try:
+    from argon2.exceptions import InvalidHashError, VerifyMismatchError
+except ImportError:
+    from argon2.exceptions import InvalidHash as InvalidHashError, VerifyMismatchError  # type: ignore[no-redef]
 from fastapi import Depends, HTTPException, Request, Response, status
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
 
@@ -26,6 +30,34 @@ PASSWORD_HASHER = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4, 
 CSRF_HEADER = "X-CSRF-Token"
 PREAUTH_HEADER = "X-Management-Web-Request"
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def authentication_schema_ready(db: Session) -> bool:
+    return bool(db.execute(text("""
+        SELECT to_regclass('public.auth_accounts') IS NOT NULL
+           AND to_regclass('public.auth_sessions') IS NOT NULL
+           AND to_regclass('public.auth_email_verifications') IS NOT NULL
+           AND to_regclass('public.auth_rate_limits') IS NOT NULL
+    """)).scalar())
+
+
+def require_authentication_schema(db: Session = Depends(get_db)) -> None:
+    if not authentication_schema_ready(db):
+        raise HTTPException(503, "Authentication is temporarily unavailable. Please contact the administrator.")
+
+
+def verification_email_configured() -> bool:
+    return bool(settings.SMTP_HOST and settings.SMTP_FROM_EMAIL)
+
+
+def is_email_verification_required() -> bool:
+    configured = settings.AUTH_REQUIRE_EMAIL_VERIFICATION
+    if configured in {"true", "1", "yes", "on"}:
+        return True
+    if configured in {"false", "0", "no", "off"}:
+        return False
+    # If auto: require email verification only if SMTP is fully configured
+    return verification_email_configured()
 
 
 @dataclass(frozen=True)

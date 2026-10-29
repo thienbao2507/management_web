@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.auth import (
     PASSWORD_HASHER,
     AuthContext,
+    authentication_schema_ready,
     clear_auth_cookies,
     client_key,
     create_session,
@@ -17,12 +18,15 @@ from app.core.auth import (
     find_auth_context,
     hash_password,
     require_authenticated_request,
+    require_authentication_schema,
     send_verification_email,
     set_auth_cookies,
     token_hash,
     utcnow,
     validate_csrf,
     verify_password,
+    verification_email_configured,
+    is_email_verification_required,
 )
 from app.core.database import get_db
 from app.models.auth import AuthAccount, AuthEmailVerification, AuthSession
@@ -43,9 +47,29 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 DUMMY_PASSWORD_HASH = hash_password("not-a-real-password-value")
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+@router.get("/status")
+def auth_status(db: Session = Depends(get_db)):
+    ready = authentication_schema_ready(db)
+    req_verification = is_email_verification_required()
+    registration_available = ready and (not req_verification or verification_email_configured())
+    return {
+        "ready": ready,
+        "registration_available": registration_available,
+        "message": (
+            "Authentication is temporarily unavailable. Please contact the administrator."
+            if not ready else
+            "Registration is temporarily unavailable. Please contact the administrator."
+            if not registration_available else None
+        ),
+    }
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_authentication_schema)])
 def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     enforce_json_origin(request)
+    req_verification = is_email_verification_required()
+    if req_verification and not verification_email_configured():
+        raise HTTPException(503, "Registration is temporarily unavailable. Please contact the administrator.")
     enforce_rate_limit(db, scope="register-ip", key=client_key(request), limit=5, window_seconds=3600)
     enforce_rate_limit(db, scope="register-email", key=payload.email, limit=3, window_seconds=3600)
 
@@ -60,7 +84,13 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         default_avatar_key=avatar_key_for_id(user_id),
         is_active=True,
     )
-    account = AuthAccount(user=user, email=payload.email, password_hash=hash_password(payload.password))
+    now = utcnow()
+    account = AuthAccount(
+        user=user,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        email_verified_at=now if not req_verification else None,
+    )
     db.add_all([user, account])
     try:
         db.commit()
@@ -68,16 +98,24 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         db.rollback()
         raise HTTPException(status_code=409, detail="An account already exists for this email") from error
     db.refresh(account)
-    raw_token = create_verification_token(db, account)
-    delivery = send_verification_email(account.email, raw_token)
+
+    if req_verification:
+        raw_token = create_verification_token(db, account)
+        delivery = send_verification_email(account.email, raw_token)
+        return RegisterResponse(
+            status="pending_verification",
+            message="Account created. Verify your email before signing in.",
+            email_delivery=delivery,
+        )
+
     return RegisterResponse(
-        status="pending_verification",
-        message="Account created. Verify your email before signing in.",
-        email_delivery=delivery,
+        status="completed",
+        message="Account created successfully. You can now sign in.",
+        email_delivery="not_configured",
     )
 
 
-@router.post("/verify-email", response_model=AuthMessageResponse)
+@router.post("/verify-email", response_model=AuthMessageResponse, dependencies=[Depends(require_authentication_schema)])
 def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = Depends(get_db)):
     enforce_json_origin(request)
     enforce_rate_limit(db, scope="verify-ip", key=client_key(request), limit=10, window_seconds=900)
@@ -101,9 +139,11 @@ def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = De
     return {"message": "Email verified. You can now sign in."}
 
 
-@router.post("/resend-verification", response_model=AuthMessageResponse)
+@router.post("/resend-verification", response_model=AuthMessageResponse, dependencies=[Depends(require_authentication_schema)])
 def resend_verification(payload: ResendVerificationRequest, request: Request, db: Session = Depends(get_db)):
     enforce_json_origin(request)
+    if not verification_email_configured():
+        raise HTTPException(503, "Verification email delivery is temporarily unavailable. Please contact the administrator.")
     enforce_rate_limit(db, scope="resend-ip", key=client_key(request), limit=5, window_seconds=3600)
     enforce_rate_limit(db, scope="resend-email", key=payload.email, limit=3, window_seconds=3600)
     account = db.query(AuthAccount).filter(AuthAccount.email == payload.email).first()
@@ -113,7 +153,7 @@ def resend_verification(payload: ResendVerificationRequest, request: Request, db
     return {"message": "If an unverified active account exists, a new verification email has been requested."}
 
 
-@router.post("/login", response_model=AuthSessionResponse)
+@router.post("/login", response_model=AuthSessionResponse, dependencies=[Depends(require_authentication_schema)])
 def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     enforce_json_origin(request)
     key = f"{client_key(request)}:{payload.email}"
@@ -127,7 +167,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     valid = verify_password(account.password_hash if account else DUMMY_PASSWORD_HASH, payload.password)
     if not account or not valid:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not account.email_verified_at:
+    if is_email_verification_required() and not account.email_verified_at:
         raise HTTPException(status_code=403, detail="Verify your email before signing in")
     if not account.user or not account.user.is_active:
         raise HTTPException(status_code=403, detail="This account is inactive")

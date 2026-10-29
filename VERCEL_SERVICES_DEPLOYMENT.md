@@ -34,13 +34,42 @@ Services share project environment configuration, but Vite does not expose an un
    - A built `/assets/...` URL returns a static asset.
    - `/health` returns FastAPI JSON. This does not prove database access.
    - `/api/v1/openapi.json` returns OpenAPI JSON.
-   - `/api/v1/users` and `/api/v1/projects` return FastAPI JSON and confirm the configured database/schema is reachable.
+   - `/api/v1/auth/status` reports `ready: true` after the approved authentication migration. It reports registration availability separately.
+   - `/api/v1/auth/me`, `/api/v1/users` and `/api/v1/projects` return JSON 401 while signed out. After login, verify the current account and its scoped data.
    - `/api/v1/route-that-does-not-exist` returns an API 404 response, not `index.html`.
 4. If a data API returns a schema-related 503, stop and review the missing migration separately. Do not run Alembic from a Vercel build or deployment.
 
 ## Production rollout
 
 After the preview checks pass, merge or deploy the reviewed commit to the production branch. Re-run the same GET checks on `https://management-web-beta.vercel.app`. Do not create test users or other production records as part of deployment verification.
+
+## Authentication rollout and existing Workspace recovery
+
+Deploying source does not apply database migrations. Authentication needs revision `c51f01d5e002` (parent `b41f01d5e001`). The migration adds `auth_accounts`, `auth_sessions`, `auth_email_verifications` and `auth_rate_limits`; it does not populate accounts or change existing Workspace ownership. Never add migrations to Vercel builds or API startup.
+
+Follow [`backend/AUTH_SCHEMA_MIGRATION.md`](backend/AUTH_SCHEMA_MIGRATION.md) for the guarded audit, full pending-chain review, isolated rehearsal, approval request, recovery plan, and post-migration verification. The complete current chain is `123263086b0a -> 9b8a6d3f4e21 -> a31f01c4d001 -> a31f02c4d002 -> b41f01d5e001 -> c51f01d5e002`; select the pending suffix only after auditing the target.
+
+1. Audit the actual target database read-only and verify its current revision and existing record counts. Verify Vercel Production uses that same database/branch. Review the existing additive migration and rehearse it on an isolated database.
+2. Obtain explicit production migration approval. Use the approved direct `DATABASE_URL_UNPOOLED`, not the pooled runtime URL. From `backend/`, apply only the reviewed target with `python -m alembic upgrade c51f01d5e002`. Do not use `stamp`, recreate schemas, reset data or downgrade a live database to fix this issue. Verify the new revision and unchanged existing record counts.
+3. Configure backend environment variables for the correct Vercel environment, then redeploy the approved source:
+   - `APP_BASE_URL=https://management-web-beta.vercel.app` for Production; use the matching public URL for Preview.
+   - `AUTH_COOKIE_SECURE=true` for HTTPS deployment; keep default cookie names `mw_session` and `mw_csrf` (frontend expects `mw_csrf`).
+   - SMTP provider's `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_STARTTLS`. Store credentials as secrets. The existing sender supports STARTTLS SMTP (normally port 587); use settings supplied by your provider. Do not paste passwords or verification tokens into source, Git or chat.
+4. Verify `/api/v1/auth/status` returns `ready: true` and `registration_available: true`. SMTP presence alone does not prove delivery; use an approved account to verify actual email delivery. Sign-in is at `/#/login`, registration at `/#/register` and verification/resend at `/#/verify`.
+
+For a user who already owns Workspace data but has no auth account, prefer activating that existing User ID rather than registering a separate identity. Confirm the exact User ID, owned Workspace ID and intended email with the owner first. No public API can claim existing profiles. No automatic matching by display name or email is performed.
+
+From `backend/`, using the approved target database environment:
+
+```text
+python -m scripts.auth_recovery --legacy-user-id USER_ID --workspace-id WORKSPACE_ID --email OWNER_EMAIL
+```
+
+The default is a read-only mapping check, including preserved record counts. It works before migration to inspect the proposed mapping, but account activation requires exactly `c51f01d5e002` and configured email delivery.
+
+After explicit mapping/production activation approval, the owner runs the same command with `--apply`. It prompts for the exact User ID and a new password twice using hidden input; never put the password in arguments or send it to the agent. This creates a pending auth account on the original User ID and sends the ordinary verification email. The owner follows the email link, verifies, then signs in with the chosen password. All existing ownership IDs are retained.
+
+If email sending fails, the pending account remains and Verify email / Resend can retry delivery. Do not rerun activation to reset credentials. If a separate account already uses the email or User ID, the tool refuses to merge; audit and approve a separate mapping plan. Do not transfer the old Workspace to the first registrant or expose unassigned data as a workaround.
 
 References:
 

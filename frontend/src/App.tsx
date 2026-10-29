@@ -4,6 +4,7 @@ import { UserProvider, useUsers } from "@/context/UserContext"
 import { WorkspaceProvider, useWorkspace } from "@/context/WorkspaceContext"
 import { useProjectWorkspace, type WorkspaceToken } from "@/context/useProjectWorkspace"
 import { IdentityDialog } from "@/components/identity/IdentityDialog"
+import { AuthPage } from "@/components/identity/AuthPage"
 import { ProjectMembers } from "@/components/project/ProjectMembers"
 import { PrimarySidebar, type NavItemKey } from "@/components/layout/PrimarySidebar"
 import { SecondarySidebar, type SecondaryNavKey } from "@/components/layout/SecondarySidebar"
@@ -573,10 +574,17 @@ export function AppContent() {
   )
 }
 
+function AppSession() {
+  const { currentUser, loading } = useUsers()
+  if (loading) return <div className="flex min-h-screen items-center justify-center gap-2 bg-background text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />Restoring your session...</div>
+  if (!currentUser) return <AuthPage />
+  return <WorkspaceProvider><AppContent /><IdentityDialog /></WorkspaceProvider>
+}
+
 export default function App() {
   return (
     <ThemeProvider>
-      <UserProvider><WorkspaceProvider><AppContent /><IdentityDialog /></WorkspaceProvider></UserProvider>
+      <UserProvider><AppSession /></UserProvider>
     </ThemeProvider>
   )
 }

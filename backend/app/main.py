@@ -38,6 +38,10 @@ app.include_router(auth_router, prefix=settings.API_V1_STR)
 
 @app.exception_handler(ProgrammingError)
 async def database_programming_error(request, error: ProgrammingError):
+    if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "auth_" in (error.statement or ""):
+        return JSONResponse(status_code=503, content={
+            "detail": "Authentication is temporarily unavailable. Please contact the administrator."
+        })
     if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and any(
         name in (error.statement or "")
         for name in ("workspaces", "workspace_id")
@@ -45,7 +49,7 @@ async def database_programming_error(request, error: ProgrammingError):
         return JSONResponse(status_code=503, content={
             "detail": "Workspace schema is not ready. A separately approved database migration is required."
         })
-    if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and any(name in (error.statement or "") for name in ("auth_", "users", "project_memberships", "assignee_id")):
+    if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and any(name in (error.statement or "") for name in ("users", "project_memberships", "assignee_id")):
         return JSONResponse(status_code=503, content={"detail": "User integration schema is not ready. A separately approved database migration is required."})
     if getattr(error.orig, "pgcode", None) == "42P01" and "project_resources" in (error.statement or ""):
         return JSONResponse(status_code=503, content={

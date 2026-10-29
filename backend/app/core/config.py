@@ -30,6 +30,7 @@ class Settings:
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
     SMTP_STARTTLS: bool = os.getenv("SMTP_STARTTLS", "true").lower() in {"1", "true", "yes", "on"}
+    AUTH_REQUIRE_EMAIL_VERIFICATION: str = os.getenv("AUTH_REQUIRE_EMAIL_VERIFICATION", "auto").lower()
 
 
 settings = Settings()

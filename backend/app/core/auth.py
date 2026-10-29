@@ -246,7 +246,7 @@ def find_auth_context(request: Request, db: Session) -> AuthContext | None:
     )
     if not session or not session.account or not session.account.user:
         return None
-    if not session.account.email_verified_at or not session.account.user.is_active:
+    if (is_email_verification_required() and not session.account.email_verified_at) or not session.account.user.is_active:
         return None
     return AuthContext(account=session.account, session=session, user=session.account.user)
 

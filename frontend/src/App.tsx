@@ -6,8 +6,7 @@ import { useProjectWorkspace, type WorkspaceToken } from "@/context/useProjectWo
 import { IdentityDialog } from "@/components/identity/IdentityDialog"
 import { AuthPage } from "@/components/identity/AuthPage"
 import { ProjectMembers } from "@/components/project/ProjectMembers"
-import { PrimarySidebar, type NavItemKey } from "@/components/layout/PrimarySidebar"
-import { SecondarySidebar, type SecondaryNavKey } from "@/components/layout/SecondarySidebar"
+import { SecondarySidebar, VISIBLE_NAV_KEYS, type SecondaryNavKey } from "@/components/layout/SecondarySidebar"
 import { Header } from "@/components/layout/Header"
 import { RightSidebar } from "@/components/layout/RightSidebar"
 import { KanbanBoard } from "@/components/kanban/KanbanBoard"
@@ -27,11 +26,9 @@ const viewPaths: Record<SecondaryNavKey, string> = {
 }
 
 function readView(): SecondaryNavKey {
-  return (Object.entries(viewPaths).find(([, path]) => `#${path}` === window.location.hash)?.[0] as SecondaryNavKey) || "active_sprint"
-}
-
-function primaryForView(view: SecondaryNavKey): NavItemKey {
-  return view === "resources" ? "resources" : view === "dashboard" ? "dashboard" : view === "settings" ? "settings" : "tasks"
+  const view = Object.entries(viewPaths).find(([, path]) => `#${path}` === window.location.hash)?.[0] as SecondaryNavKey | undefined
+  // "team" vẫn mở được từ nút Members trên Header; các view bị ẩn quay về Active Sprint.
+  return view && (VISIBLE_NAV_KEYS.includes(view) || view === "team") ? view : "active_sprint"
 }
 
 export function AppContent() {
@@ -41,7 +38,6 @@ export function AppContent() {
   const parentScopeKey = sharedMode ? JSON.stringify([currentUser?.id || "anonymous", "shared"]) : workspaceScopeKey
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   // Navigation states
-  const [activePrimaryNav, setActivePrimaryNav] = useState<NavItemKey>(() => primaryForView(readView()))
   const [activeSecondaryNav, setActiveSecondaryNav] = useState<SecondaryNavKey>(readView)
   const isResourcesView = activeSecondaryNav === "resources"
   const [resourceSearch, setResourceSearch] = useState("")
@@ -49,20 +45,13 @@ export function AppContent() {
 
   const navigateView = useCallback((view: SecondaryNavKey) => {
     setActiveSecondaryNav(view)
-    setActivePrimaryNav(primaryForView(view))
     window.location.hash = viewPaths[view]
     setIsMobileMenuOpen(false)
   }, [])
 
-  const navigatePrimary = (item: NavItemKey) => {
-    navigateView(item === "resources" ? "resources" : item === "dashboard" ? "dashboard" : item === "settings" ? "settings" : "active_sprint")
-  }
-
   useEffect(() => {
     const syncView = () => {
-      const view = readView()
-      setActiveSecondaryNav(view)
-      setActivePrimaryNav(primaryForView(view))
+      setActiveSecondaryNav(readView())
       setIsMobileMenuOpen(false)
     }
     if (!window.location.hash) window.history.replaceState(null, "", "#/active-sprint")
@@ -275,14 +264,8 @@ export function AppContent() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* 1. Primary Sidebar (Desktop) */}
-      <PrimarySidebar
-        activeItem={activePrimaryNav}
-        onSelectItem={navigatePrimary}
-        className="hidden md:flex"
-      />
-
-      {/* 2. Secondary Sidebar (Desktop) */}
+      {/* Primary Sidebar (thanh icon xanh) tạm ẩn vì trùng với Project Views. */}
+      {/* Secondary Sidebar (Desktop) */}
       <SecondarySidebar
         currentWorkspace={currentWorkspace}
         workspaceLoading={workspaceLoading}
@@ -311,10 +294,6 @@ export function AppContent() {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="relative flex h-full z-10">
-            <PrimarySidebar
-              activeItem={activePrimaryNav}
-              onSelectItem={navigatePrimary}
-            />
             <div className="w-64 bg-card h-full flex flex-col border-r border-border">
               <div className="flex items-center justify-between p-3 border-b border-border">
                 <span className="text-xs font-bold">Workspace Navigation</span>

@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session, undefer
+from sqlalchemy.orm import Session, selectinload, undefer
 from sqlalchemy import func, insert
 from app.api.v1.project_workspace import identity_schema_ready, require_identity_schema
 from app.core.auth import get_request_auth, require_authenticated_request
@@ -103,7 +103,12 @@ def get_tasks(
             (Task.description.ilike(search_filter))
         )
 
-    tasks = query.order_by(Task.status, Task.position.asc(), Task.created_at.desc()).all()
+    # Load subtasks in one batch query instead of one lazy load per task.
+    tasks = query.options(selectinload(Task.subtasks)).order_by(Task.status, Task.position.asc(), Task.created_at.desc()).all()
+    # Preload assignees into the identity map so task_result's db.get() needs no extra round trip.
+    assignee_ids = {task.__dict__.get("assignee_id") for task in tasks} - {None}
+    if assignee_ids:
+        db.query(User).filter(User.id.in_(assignee_ids)).all()
     return [task_result(task, db) for task in tasks]
 
 @router.post("", response_model=TaskResponse, status_code=201)

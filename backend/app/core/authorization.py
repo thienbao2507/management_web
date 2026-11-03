@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException
 from sqlalchemy import exists, or_, select
-from sqlalchemy.orm import Session, undefer
+from sqlalchemy.orm import Session, aliased, undefer
 
 from app.models.project import Project
 from app.models.project_membership import ProjectMembership
@@ -56,11 +56,20 @@ def require_project_access(
     owner_required: bool = False,
     include_archived: bool = False,
 ) -> ProjectAccess:
-    project = accessible_project_query(db, user_id, include_archived=include_archived).filter(Project.id == project_id).first()
-    if not project:
+    # Fetch the project and its Workspace owner in one round trip. An alias keeps the
+    # correlated EXISTS filters in accessible_project_filter bound to their own Workspace.
+    owner_workspace = aliased(Workspace)
+    row = (
+        accessible_project_query(db, user_id, include_archived=include_archived)
+        .filter(Project.id == project_id)
+        .outerjoin(owner_workspace, owner_workspace.id == Project.workspace_id)
+        .add_columns(owner_workspace.owner_user_id)
+        .first()
+    )
+    if not row:
         raise HTTPException(status_code=404, detail="Project not found")
-    workspace = db.query(Workspace).filter(Workspace.id == project.workspace_id).first()
-    is_owner = bool(workspace and workspace.owner_user_id == user_id)
+    project, owner_user_id = row
+    is_owner = owner_user_id == user_id
     if owner_required and not is_owner:
         raise HTTPException(status_code=403, detail="Workspace Owner permission is required")
     return ProjectAccess(project=project, is_owner=is_owner)

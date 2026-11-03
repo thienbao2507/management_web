@@ -37,6 +37,9 @@ export type SecondaryNavKey =
   | "team"
   | "settings"
 
+// Tạm ẩn các view chưa hoàn thiện; chỉ hiện các tính năng đang dùng thật.
+export const VISIBLE_NAV_KEYS: SecondaryNavKey[] = ["active_sprint", "resources"]
+
 interface SecondarySidebarProps {
   currentWorkspace: ApiWorkspace | null
   workspaceLoading: boolean
@@ -90,7 +93,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
     { key: "releases" as SecondaryNavKey, label: "Releases", icon: Package },
     { key: "team" as SecondaryNavKey, label: "Team Members", icon: Users, count: membersCount == null ? "—" : String(membersCount) },
     { key: "settings" as SecondaryNavKey, label: "Settings", icon: Settings },
-  ]
+  ].filter((item) => VISIBLE_NAV_KEYS.includes(item.key))
 
   return (
     <aside

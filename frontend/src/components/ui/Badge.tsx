@@ -15,7 +15,7 @@ const badgeVariants = cva(
           "border-transparent bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20",
         outline: "text-foreground border-border",
         // Specific priority variants
-        low: "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300",
+        low: "border-slate-200 bg-slate-100 text-slate-700 dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-300",
         medium: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/50 dark:text-blue-300",
         high: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-300",
         urgent: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/50 dark:text-red-300 font-semibold",

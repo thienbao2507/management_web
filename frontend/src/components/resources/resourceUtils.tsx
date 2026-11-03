@@ -40,7 +40,7 @@ export const RESOURCE_TYPE_STYLES: Record<
   },
   GitHub: {
     icon: GitBranch,
-    className: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
+    className: "bg-slate-500/10 text-slate-700 dark:text-neutral-300",
   },
   Other: {
     icon: Link2,

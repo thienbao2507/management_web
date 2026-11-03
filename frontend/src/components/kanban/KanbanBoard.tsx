@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import React, { useDeferredValue, useMemo, useState } from "react"
+import { normalizeSearch } from "@/lib/utils"
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd"
 import { type ApiTask } from "@/services/api"
 import { KanbanColumn } from "./KanbanColumn"
@@ -32,19 +33,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     new Set(tasks.map((t) => t.assignee_id ? `user:${t.assignee_id}` : t.assignee_name ? `legacy:${t.assignee_name}` : null).filter(Boolean))
   ) as string[]
 
+  // Search runs at lower priority so typing stays responsive; matching ignores Vietnamese accents.
+  const deferredQuery = useDeferredValue(searchQuery)
+  const q = normalizeSearch(deferredQuery)
+  const searchIndex = useMemo(() => new Map(tasks.map((task) => [task.id, normalizeSearch([
+    task.title,
+    task.task_key,
+    task.category,
+    task.assignee_id ? usersById[task.assignee_id]?.display_name : task.assignee_name,
+  ].join("\n"))])), [tasks, usersById])
+
   // Filter tasks based on search, active quick filter and assignee
   const filteredTasks = tasks.filter((task) => {
-    // Search query matching
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      const matchesTitle = task.title.toLowerCase().includes(q)
-      const matchesKey = task.task_key.toLowerCase().includes(q)
-      const matchesCategory = task.category.toLowerCase().includes(q)
-      const matchesAssignee = (task.assignee_id ? usersById[task.assignee_id]?.display_name : task.assignee_name)?.toLowerCase().includes(q)
-      if (!matchesTitle && !matchesKey && !matchesCategory && !matchesAssignee) {
-        return false
-      }
-    }
+    if (q && !searchIndex.get(task.id)?.includes(q)) return false
 
     // Assignee filter
     if (selectedAssignee !== "all" && (task.assignee_id ? `user:${task.assignee_id}` : `legacy:${task.assignee_name}`) !== selectedAssignee) {
@@ -90,7 +91,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     title: string
     accentColor: string
   }[] = [
-    { id: "backlog", title: "Backlog", accentColor: "bg-slate-400 dark:bg-slate-500" },
+    { id: "backlog", title: "Backlog", accentColor: "bg-slate-400 dark:bg-neutral-500" },
     { id: "todo", title: "To Do", accentColor: "bg-blue-500" },
     { id: "in_progress", title: "In Progress", accentColor: "bg-amber-500" },
     { id: "done", title: "Done", accentColor: "bg-emerald-500" },

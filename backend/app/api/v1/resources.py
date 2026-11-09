@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import String, cast, func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.api.v1.workspaces import (
     require_workspace_schema,
@@ -183,14 +183,22 @@ def list_resources(
         )
 
     base_query = accessible_resource_query(db, user_id).filter(*filters)
-    total = base_query.with_entities(func.count(ProjectResource.id)).scalar() or 0
-    resources = (
-        base_query.options(joinedload(ProjectResource.project))
+    rows = (
+        base_query.options(contains_eager(ProjectResource.project))
+        .add_columns(func.count().over().label("total_count"))
         .order_by(ProjectResource.created_at.desc(), ProjectResource.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
+    resources = [row[0] for row in rows]
+    if rows:
+        total = rows[0].total_count
+    elif page > 1:
+        # Past the last page the window count has no row to ride on.
+        total = base_query.with_entities(func.count(ProjectResource.id)).scalar() or 0
+    else:
+        total = 0
 
     return ProjectResourceListResponse(
         items=[resource_to_response(resource) for resource in resources],

@@ -17,7 +17,14 @@ WORKSPACE_SCHEMA_ERROR = (
 )
 
 
+_workspace_schema_confirmed = False
+
+
 def workspace_schema_ready(db: Session) -> bool:
+    global _workspace_schema_confirmed
+    # Only a positive result is cached, so a lagging schema is re-checked until migrated.
+    if _workspace_schema_confirmed:
+        return True
     if "workspace_schema_ready" not in db.info:
         db.info["workspace_schema_ready"] = db.execute(
             text(
@@ -33,6 +40,7 @@ def workspace_schema_ready(db: Session) -> bool:
                 """
             )
         ).scalar()
+        _workspace_schema_confirmed = bool(db.info["workspace_schema_ready"])
     return bool(db.info["workspace_schema_ready"])
 
 

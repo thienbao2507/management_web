@@ -12,7 +12,7 @@ class ProjectResource(Base):
     __tablename__ = "project_resources"
     __table_args__ = (
         CheckConstraint(
-            "resource_type IN ('Website', 'Google Docs', 'Google Sheets', 'Google Drive', 'Canva', 'Word', 'GitHub', 'Other')",
+            "resource_type IN ('Website', 'Google Docs', 'Google Sheets', 'Google Forms', 'Google Drive', 'Canva', 'Word', 'GitHub', 'Other')",
             name="ck_project_resources_resource_type",
         ),
         Index("ix_project_resources_created_at", "created_at"),

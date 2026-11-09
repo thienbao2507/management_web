@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   FileSpreadsheet,
   FileText,
   Files,
@@ -25,6 +26,10 @@ export const RESOURCE_TYPE_STYLES: Record<
   "Google Sheets": {
     icon: FileSpreadsheet,
     className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  "Google Forms": {
+    icon: ClipboardList,
+    className: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   },
   "Google Drive": {
     icon: Files,

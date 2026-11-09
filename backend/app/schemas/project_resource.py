@@ -12,6 +12,7 @@ class ResourceType(str, Enum):
     WEBSITE = "Website"
     GOOGLE_DOCS = "Google Docs"
     GOOGLE_SHEETS = "Google Sheets"
+    GOOGLE_FORMS = "Google Forms"
     GOOGLE_DRIVE = "Google Drive"
     CANVA = "Canva"
     WORD = "Word"

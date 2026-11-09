@@ -95,6 +95,7 @@ export const RESOURCE_TYPES = [
   "Website",
   "Google Docs",
   "Google Sheets",
+  "Google Forms",
   "Google Drive",
   "Canva",
   "Word",

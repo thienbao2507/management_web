@@ -81,3 +81,5 @@ backend/tests/*
 !backend/tests/auth/*.py
 
 
+docs/huong-dan-su-dung.html
+.ai-flow/

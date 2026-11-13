@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import {
   AlertCircle,
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -13,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/Badge"
@@ -197,6 +199,10 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     debouncedSearch || projectId || resourceType || createdFrom || createdTo
   )
 
+  const activeFilterCount = [projectId, resourceType, createdFrom, createdTo].filter(Boolean).length
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersVisible = filtersOpen || Boolean(dateRangeError)
+
   const showToast = (message: string, tone: ToastState["tone"]) => {
     setToast({ id: Date.now(), message, tone })
   }
@@ -293,7 +299,26 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
           <SearchInput aria-label="Search all resources" placeholder="Search all resources..." value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} onClear={() => onSearchChange("")} />
         </div>
 
-        <section aria-label="Resource filters" className="mt-5 rounded-lg border border-border bg-card p-3 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersOpen((value) => !value)}
+            aria-expanded={filtersVisible}
+            aria-controls="resource-filters"
+            className="gap-1.5"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" /> Filter
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground">{activeFilterCount}</span>
+            )}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersVisible ? "rotate-180" : ""}`} />
+          </Button>
+          <span className="text-[11px] text-muted-foreground">{isLoading ? "Updating results..." : `${total} resource${total === 1 ? "" : "s"}`}</span>
+        </div>
+
+        {filtersVisible && (
+        <section id="resource-filters" aria-label="Resource filters" className="mt-2 rounded-lg border border-border bg-card p-3 shadow-sm">
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-44 flex-1 space-y-1 text-[11px] font-medium sm:max-w-xs">
               <span>Project</span>
@@ -354,11 +379,9 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
             </Button>
           </div>
           {dateRangeError && <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{dateRangeError}</p>}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
-            <span>{isLoading ? "Updating results..." : `${total} resource${total === 1 ? "" : "s"}`}</span>
-            <span>Search covers project, resource, description, keywords, and type. Dates: UTC+7.</span>
-          </div>
+          <p className="mt-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Search covers project, resource, description, keywords, and type. Dates: UTC+7.</p>
         </section>
+        )}
 
         {loadError ? (
           <EmptyState

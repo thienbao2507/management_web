@@ -70,6 +70,20 @@ export interface WorkspacePayload {
   description?: string | null
 }
 
+export type FeedbackCategory = "bug" | "feature" | "other"
+
+export interface FeedbackPayload {
+  category: FeedbackCategory
+  content: string
+  images: string[]
+}
+
+export interface ApiFeedback {
+  id: string
+  category: FeedbackCategory
+  created_at: string
+}
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) { super(message); this.status = status }
@@ -225,6 +239,9 @@ export const api = {
   },
   createWorkspace(payload: WorkspacePayload): Promise<ApiWorkspace> {
     return request("/workspaces", { method: "POST", body: JSON.stringify(payload) })
+  },
+  createFeedback(payload: FeedbackPayload): Promise<ApiFeedback> {
+    return request("/feedback", { method: "POST", body: JSON.stringify(payload) })
   },
   // Projects
   async getProjects(

@@ -263,7 +263,8 @@ export default function WhiteboardCanvas({ board, onSaved, onReload }: Whiteboar
         theme={resolvedTheme}
       />
 
-      <div className="pointer-events-none absolute right-3 top-3 z-20">
+      {/* Bottom-right, left of Excalidraw's help button, so it never covers the Library button at top-right. */}
+      <div className="pointer-events-none absolute bottom-[1.15rem] right-[4.25rem] z-20">
         {saveStatus === "failed" ? (
           <Button className="pointer-events-auto shadow-md" variant="outline" size="sm" onClick={retrySave}>
             Save failed – Retry

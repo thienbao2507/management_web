@@ -169,14 +169,18 @@ def rename_whiteboard(
     return whiteboard_to_summary(updated)
 
 
-@router.put("/{whiteboard_id}/scene", response_model=WhiteboardSceneSaveResponse)
-async def save_whiteboard_scene(
+@router.put(
+    "/{whiteboard_id}/scene",
+    response_model=WhiteboardSceneSaveResponse,
+    dependencies=[Depends(require_body_within_limit)],
+)
+def save_whiteboard_scene(
     whiteboard_id: str,
     payload: WhiteboardSceneUpdate,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    await require_body_within_limit(request)
+    # Sync handler runs in the threadpool so blocking DB I/O does not stall the event loop.
     user_id = get_request_auth(request).user.id
     whiteboard = (
         accessible_whiteboard_query(db, user_id)

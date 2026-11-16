@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import String, and_, cast, func, or_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.api.v1.workspaces import (
@@ -325,9 +326,13 @@ def pin_resource(resource_id: str, request: Request, db: Session = Depends(get_d
     if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    if db.get(ProjectResourcePin, (user_id, resource_id)) is None:
-        db.add(ProjectResourcePin(user_id=user_id, resource_id=resource_id))
-        db.commit()
+    # ON CONFLICT keeps concurrent pin requests idempotent instead of raising IntegrityError.
+    db.execute(
+        pg_insert(ProjectResourcePin)
+        .values(user_id=user_id, resource_id=resource_id)
+        .on_conflict_do_nothing(index_elements=["user_id", "resource_id"])
+    )
+    db.commit()
 
     return resource_to_response(resource, is_pinned=True)
 

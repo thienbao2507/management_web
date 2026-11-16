@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight, Loader2, ShieldCheck, Users } from "lucide-react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
+import { ChevronLeft, ChevronRight, Loader2, MessageSquareText, ShieldCheck, Users } from "lucide-react"
 
+import { AdminFeedbackPanel } from "@/components/admin/AdminFeedbackPanel"
 import { Button } from "@/components/ui/Button"
 import { SearchInput } from "@/components/ui/Input"
 import { UserAvatar } from "@/components/ui/UserAvatar"
-import { api, type ApiUser } from "@/services/api"
+import { api, type ApiAdminUser, type FeedbackStatusCounts } from "@/services/api"
 
 
 const PAGE_SIZE = 50
+const ADMIN_TAB_KEY = "management_web_admin_tab"
 
 interface AdminUsersPageProps {
   currentUserId: string
@@ -21,8 +23,23 @@ function formatCreatedAt(value: string): string {
   }).format(new Date(value))
 }
 
+function formatLastLogin(value: string): string {
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000))
+  if (elapsedSeconds < 60) return "Just now"
+  const minutes = Math.floor(elapsedSeconds / 60)
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? "" : "s"} ago`
+}
+
 export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId }) => {
-  const [users, setUsers] = useState<ApiUser[]>([])
+  const [activeTab, setActiveTab] = useState<"users" | "feedback">(() => (
+    localStorage.getItem(ADMIN_TAB_KEY) === "feedback" ? "feedback" : "users"
+  ))
+  const [newFeedbackCount, setNewFeedbackCount] = useState(0)
+  const [users, setUsers] = useState<ApiAdminUser[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
@@ -32,6 +49,24 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
   const [refreshKey, setRefreshKey] = useState(0)
   const [pendingUserIds, setPendingUserIds] = useState<Set<string>>(new Set())
   const requestSequence = useRef(0)
+
+  const handleCountsChange = useCallback((counts: FeedbackStatusCounts) => {
+    setNewFeedbackCount(counts.new)
+  }, [])
+
+  const selectTab = (tab: "users" | "feedback") => {
+    setActiveTab(tab)
+    localStorage.setItem(ADMIN_TAB_KEY, tab)
+  }
+
+  useEffect(() => {
+    if (activeTab === "feedback") return
+    const controller = new AbortController()
+    api.listAdminFeedback({ page: 1, page_size: 1 }, controller.signal)
+      .then((result) => setNewFeedbackCount(result.counts.new))
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [activeTab])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -71,7 +106,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
   }, [debouncedSearch, page, refreshKey])
 
   const updateUser = async (
-    user: ApiUser,
+    user: ApiAdminUser,
     payload: { role?: "admin" | "user"; is_active?: boolean },
   ) => {
     if (pendingUserIds.has(user.id) || user.id === currentUserId) return
@@ -79,7 +114,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
     setError(null)
     try {
       const updated = await api.updateAdminUser(user.id, payload)
-      setUsers((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setUsers((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Unable to update this user.")
     } finally {
@@ -100,11 +135,15 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold tracking-tight">Manage users</h1>
+              <h1 className="text-xl font-bold tracking-tight">Admin</h1>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Review accounts, assign roles, and control account access.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {activeTab === "users"
+                ? "Review accounts, assign roles, and control account access."
+                : "Review user feedback, update its status, and keep private admin notes."}
+            </p>
           </div>
-          <div className="w-full sm:max-w-xs">
+          {activeTab === "users" && <div className="w-full sm:max-w-xs">
             <SearchInput
               aria-label="Search users"
               placeholder="Search name or email..."
@@ -112,14 +151,37 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
               onChange={(event) => setSearch(event.target.value)}
               onClear={() => setSearch("")}
             />
-          </div>
+          </div>}
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div role="tablist" aria-label="Admin sections" className="mt-5 flex gap-1 border-b border-border">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "users"}
+            onClick={() => selectTab("users")}
+            className={`flex items-center gap-2 border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            <Users className="h-3.5 w-3.5" /> Users
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "feedback"}
+            onClick={() => selectTab("feedback")}
+            className={`flex items-center gap-2 border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${activeTab === "feedback" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            <MessageSquareText className="h-3.5 w-3.5" /> Feedback
+            <span aria-label={`${newFeedbackCount} new feedback`} className="min-w-5 rounded-full bg-primary/15 px-1.5 py-0.5 text-center text-[9px] font-bold text-primary">{newFeedbackCount}</span>
+          </button>
+        </div>
+
+        {activeTab === "users" ? <>
+          <div className="mt-4 flex items-center justify-between gap-3">
           <span className="text-[11px] text-muted-foreground">
             {loading ? "Updating users..." : `${total} user${total === 1 ? "" : "s"}`}
           </span>
-        </div>
+          </div>
 
         {error && (
           <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
@@ -142,7 +204,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
           </div>
         ) : users.length > 0 ? (
           <div className="mt-4 min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
-            <table aria-label="Manage users" className="w-full min-w-[760px] border-collapse text-left">
+            <table aria-label="Manage users" className="w-full min-w-[900px] border-collapse text-left">
               <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr className="h-9">
                   <th scope="col" className="px-4">Avatar + Name</th>
@@ -150,6 +212,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
                   <th scope="col" className="w-32 px-3">Role</th>
                   <th scope="col" className="w-32 px-3">Status</th>
                   <th scope="col" className="w-36 px-4">Created</th>
+                  <th scope="col" className="w-36 px-4">Last login</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,6 +256,13 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
                       <td className="px-4 text-[11px] text-muted-foreground">
                         <time dateTime={user.created_at}>{formatCreatedAt(user.created_at)}</time>
                       </td>
+                      <td className="px-4 text-[11px] text-muted-foreground">
+                        {user.last_login_at ? (
+                          <time dateTime={user.last_login_at} title={new Date(user.last_login_at).toLocaleString()}>
+                            {formatLastLogin(user.last_login_at)}
+                          </time>
+                        ) : <span className="text-muted-foreground/60">Never</span>}
+                      </td>
                     </tr>
                   )
                 })}
@@ -210,6 +280,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
             </div>
           </nav>
         )}
+        </> : <AdminFeedbackPanel onCountsChange={handleCountsChange} />}
       </div>
     </div>
   )

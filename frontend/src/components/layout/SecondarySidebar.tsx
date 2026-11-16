@@ -23,6 +23,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
 import { ACCENT_COLORS, useTheme } from "@/context/ThemeContext"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
+import { MyFeedbackDialog } from "@/components/feedback/MyFeedbackDialog"
 import { cn } from "@/lib/utils"
 import { type ApiProject, type ApiWorkspace } from "@/services/api"
 import {
@@ -94,6 +95,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
   const { currentUser, openIdentity, logout } = useUsers()
   const { accent, setAccent } = useTheme()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [myFeedbackOpen, setMyFeedbackOpen] = useState(false)
 
   const menuItems = [
     { key: "dashboard" as SecondaryNavKey, label: "Dashboard", icon: LayoutDashboard },
@@ -298,6 +300,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
             {currentUser?.role === "admin" && <DropdownMenuItem className="gap-2" onSelect={() => onSelectItem("admin")}><Shield className="h-3.5 w-3.5" />Manage users</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => setMyFeedbackOpen(true)}>My feedback</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="gap-2">
@@ -325,6 +328,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
         </DropdownMenu>
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+      <MyFeedbackDialog open={myFeedbackOpen} onOpenChange={setMyFeedbackOpen} />
     </aside>
   )
 }

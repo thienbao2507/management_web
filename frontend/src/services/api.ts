@@ -48,10 +48,13 @@ export interface ApiUser {
   created_at: string
   updated_at: string
 }
+export interface ApiAdminUser extends ApiUser {
+  last_login_at: string | null
+}
 export interface UserPayload { display_name: string; email?: string | null; job_title?: string | null; custom_avatar_url?: string | null }
 export interface ApiMember { project_id: string; user_id: string; created_at: string; user: ApiUser }
 export interface ApiSprint { id: string; project_id: string; name: string; status: string; goal: string | null; start_date: string | null; end_date: string | null; created_at: string }
-export interface UserListResponse { items: ApiUser[]; total: number; page: number; page_size: number }
+export interface UserListResponse { items: ApiAdminUser[]; total: number; page: number; page_size: number }
 export interface AuthSessionResponse { user: ApiUser; csrf_header: string; authenticated?: boolean }
 export interface RegisterResponse { status: "pending_verification" | "completed"; message: string; email_delivery?: "sent" | "failed" | "not_configured" }
 export interface AuthStatus { ready: boolean; registration_available: boolean; message: string | null }
@@ -72,6 +75,7 @@ export interface WorkspacePayload {
 }
 
 export type FeedbackCategory = "bug" | "feature" | "other"
+export type FeedbackStatus = "new" | "in_progress" | "done" | "rejected"
 
 export interface FeedbackPayload {
   category: FeedbackCategory
@@ -83,6 +87,56 @@ export interface ApiFeedback {
   id: string
   category: FeedbackCategory
   created_at: string
+}
+
+export interface AdminFeedbackUser {
+  id: string
+  display_name: string
+  email: string
+}
+
+export interface AdminFeedbackSummary {
+  id: string
+  category: FeedbackCategory
+  content: string
+  status: FeedbackStatus
+  admin_note: string | null
+  image_count: number
+  created_at: string
+  updated_at: string
+  user: AdminFeedbackUser | null
+}
+
+export interface AdminFeedbackDetail extends AdminFeedbackSummary {
+  images: string[]
+}
+
+export interface FeedbackStatusCounts {
+  new: number
+  in_progress: number
+  done: number
+  rejected: number
+}
+
+export interface AdminFeedbackListResponse {
+  items: AdminFeedbackSummary[]
+  total: number
+  page: number
+  page_size: number
+  counts: FeedbackStatusCounts
+}
+
+export interface MyFeedback {
+  id: string
+  category: FeedbackCategory
+  content: string
+  status: FeedbackStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface MyFeedbackListResponse {
+  items: MyFeedback[]
 }
 
 export class ApiError extends Error {
@@ -270,6 +324,28 @@ export const api = {
   updateAdminUser(id: string, payload: { role?: "admin" | "user"; is_active?: boolean }): Promise<ApiUser> {
     return request(`/admin/users/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) })
   },
+  listAdminFeedback(
+    params: { status?: FeedbackStatus; category?: FeedbackCategory; q?: string; page?: number; page_size?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<AdminFeedbackListResponse> {
+    const query = new URLSearchParams()
+    if (params.status) query.set("status", params.status)
+    if (params.category) query.set("category", params.category)
+    if (params.q) query.set("q", params.q)
+    if (params.page !== undefined) query.set("page", String(params.page))
+    if (params.page_size !== undefined) query.set("page_size", String(params.page_size))
+    const suffix = query.size ? `?${query.toString()}` : ""
+    return request(`/admin/feedback${suffix}`, { signal })
+  },
+  getAdminFeedback(id: string, signal?: AbortSignal): Promise<AdminFeedbackDetail> {
+    return request(`/admin/feedback/${encodeURIComponent(id)}`, { signal })
+  },
+  updateAdminFeedback(
+    id: string,
+    payload: { status?: FeedbackStatus; admin_note?: string | null },
+  ): Promise<AdminFeedbackDetail> {
+    return request(`/admin/feedback/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) })
+  },
   getMembers(projectId: string, signal?: AbortSignal): Promise<ApiMember[]> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { signal }) },
   addMember(projectId: string, email: string): Promise<ApiMember> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: JSON.stringify({ email }) }) },
   removeMember(projectId: string, userId: string): Promise<{ message: string }> { return request(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE" }) },
@@ -282,6 +358,15 @@ export const api = {
   },
   createFeedback(payload: FeedbackPayload): Promise<ApiFeedback> {
     return request("/feedback", { method: "POST", body: JSON.stringify(payload) })
+  },
+  listMyFeedback(signal?: AbortSignal): Promise<MyFeedbackListResponse> {
+    return request("/feedback/mine", { signal })
+  },
+  listFeedbackThankYou(signal?: AbortSignal): Promise<MyFeedbackListResponse> {
+    return request("/feedback/thank-you", { signal })
+  },
+  ackFeedbackThankYou(id: string): Promise<void> {
+    return request(`/feedback/${encodeURIComponent(id)}/thank-you/ack`, { method: "POST", body: "{}" })
   },
   // Projects
   async getProjects(

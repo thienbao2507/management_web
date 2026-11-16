@@ -20,6 +20,13 @@ class FeedbackCategory(str, Enum):
     OTHER = "other"
 
 
+class FeedbackStatus(str, Enum):
+    NEW = "new"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    REJECTED = "rejected"
+
+
 class RequestUserCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -71,3 +78,73 @@ class RequestUserResponse(BaseModel):
     id: str
     category: FeedbackCategory
     created_at: datetime
+
+
+class MyFeedback(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    category: FeedbackCategory
+    content: str
+    status: FeedbackStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class MyFeedbackListResponse(BaseModel):
+    items: list[MyFeedback]
+
+
+class AdminFeedbackUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    display_name: str
+    email: str | None
+
+
+class AdminFeedbackSummary(BaseModel):
+    id: str
+    category: FeedbackCategory
+    content: str
+    status: FeedbackStatus
+    admin_note: str | None
+    image_count: int
+    created_at: datetime
+    updated_at: datetime
+    user: AdminFeedbackUser | None
+
+
+class AdminFeedbackDetail(AdminFeedbackSummary):
+    images: list[str]
+
+
+class AdminFeedbackCounts(BaseModel):
+    new: int = 0
+    in_progress: int = 0
+    done: int = 0
+    rejected: int = 0
+
+
+class AdminFeedbackListResponse(BaseModel):
+    items: list[AdminFeedbackSummary]
+    total: int
+    page: int
+    page_size: int
+    counts: AdminFeedbackCounts
+
+
+class AdminFeedbackUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: FeedbackStatus | None = None
+    admin_note: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("admin_note", mode="before")
+    @classmethod
+    def normalize_admin_note(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Admin note must be a string or null")
+        return value.strip() or None

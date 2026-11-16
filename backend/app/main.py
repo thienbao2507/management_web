@@ -12,7 +12,7 @@ from app.api.v1.project_workspace import router as project_workspace_router
 from app.api.v1.workspaces import router as workspaces_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feedback import router as feedback_router
-from app.api.v1.admin import router as admin_router
+from app.api.v1.admin import admin_feedback_router, router as admin_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -40,6 +40,7 @@ app.include_router(workspaces_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
+app.include_router(admin_feedback_router, prefix=settings.API_V1_STR)
 
 
 @app.exception_handler(ProgrammingError)

@@ -95,8 +95,12 @@ class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class AdminUserResponse(UserResponse):
+    last_login_at: datetime | None
+
+
 class AdminUserListResponse(BaseModel):
-    items: list[UserResponse]
+    items: list[AdminUserResponse]
     total: int
     page: int
     page_size: int

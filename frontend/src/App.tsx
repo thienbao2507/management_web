@@ -17,6 +17,7 @@ import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModa
 import { ResourcePage } from "@/components/resources/ResourcePage"
 import { WhiteboardPage } from "@/components/whiteboard/WhiteboardPage"
 import { AdminUsersPage } from "@/components/admin/AdminUsersPage"
+import { FeedbackThankYou } from "@/components/feedback/FeedbackThankYou"
 import { Button } from "@/components/ui/Button"
 import { api, type ApiProject, type ApiTask } from "@/services/api"
 import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide-react"
@@ -568,7 +569,7 @@ function AppSession() {
   const { currentUser, loading } = useUsers()
   if (loading) return <div className="flex min-h-screen items-center justify-center gap-2 bg-background text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />Restoring your session...</div>
   if (!currentUser) return <AuthPage />
-  return <WorkspaceProvider><AppContent /><IdentityDialog /></WorkspaceProvider>
+  return <WorkspaceProvider><AppContent /><IdentityDialog /><FeedbackThankYou currentUserId={currentUser.id} /></WorkspaceProvider>
 }
 
 export default function App() {

@@ -90,6 +90,13 @@ export class ApiError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status }
 }
 
+export class WhiteboardConflictError extends ApiError {
+  constructor(message = "Whiteboard was changed by someone else") {
+    super(message, 409)
+    this.name = "WhiteboardConflictError"
+  }
+}
+
 export interface ApiProject {
   id: string
   workspace_id?: string | null
@@ -104,6 +111,26 @@ export interface ApiProject {
   created_at: string
   updated_at: string
   tasks_count?: number
+}
+
+export interface ApiWhiteboardSummary {
+  id: string
+  project_id: string
+  title: string
+  version: number
+  created_at: string
+  updated_at: string
+  updated_by_name: string | null
+}
+
+export interface ApiWhiteboardDetail extends ApiWhiteboardSummary {
+  scene: Record<string, unknown>
+}
+
+export interface ApiWhiteboardSceneResult {
+  id: string
+  version: number
+  updated_at: string
 }
 
 export const RESOURCE_TYPES = [
@@ -211,6 +238,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new ApiError(errorDetail, res.status)
   }
 
+  if (res.status === 204) return undefined as T
   return res.json()
 }
 
@@ -458,5 +486,56 @@ export const api = {
       `/resources/${encodeURIComponent(id)}`,
       { method: "DELETE" }
     )
+  },
+
+  // Whiteboards
+  async listWhiteboards(projectId: string, signal?: AbortSignal): Promise<{ items: ApiWhiteboardSummary[] }> {
+    return request<{ items: ApiWhiteboardSummary[] }>(
+      `/whiteboards?project_id=${encodeURIComponent(projectId)}`,
+      { signal }
+    )
+  },
+
+  async createWhiteboard(projectId: string, title: string): Promise<ApiWhiteboardDetail> {
+    return request<ApiWhiteboardDetail>("/whiteboards", {
+      method: "POST",
+      body: JSON.stringify({ project_id: projectId, title }),
+    })
+  },
+
+  async getWhiteboard(id: string, signal?: AbortSignal): Promise<ApiWhiteboardDetail> {
+    return request<ApiWhiteboardDetail>(`/whiteboards/${encodeURIComponent(id)}`, { signal })
+  },
+
+  async renameWhiteboard(id: string, title: string): Promise<ApiWhiteboardSummary> {
+    return request<ApiWhiteboardSummary>(`/whiteboards/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    })
+  },
+
+  async saveWhiteboardScene(
+    id: string,
+    scene: Record<string, unknown>,
+    baseVersion: number
+  ): Promise<ApiWhiteboardSceneResult> {
+    try {
+      return await request<ApiWhiteboardSceneResult>(
+        `/whiteboards/${encodeURIComponent(id)}/scene`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ scene, base_version: baseVersion }),
+        }
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        throw new WhiteboardConflictError(error.message)
+      }
+      throw error
+    }
+  },
+
+  async deleteWhiteboard(id: string): Promise<void> {
+    return request<void>(`/whiteboards/${encodeURIComponent(id)}`, { method: "DELETE" })
   },
 }

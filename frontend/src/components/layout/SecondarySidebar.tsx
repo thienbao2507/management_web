@@ -17,6 +17,7 @@ import {
   Archive,
   ChevronsUpDown,
   Shield,
+  PenTool,
 } from "lucide-react"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
@@ -41,6 +42,7 @@ export type SecondaryNavKey =
   | "roadmap"
   | "active_sprint"
   | "resources"
+  | "whiteboard"
   | "issues"
   | "releases"
   | "team"
@@ -48,7 +50,7 @@ export type SecondaryNavKey =
   | "admin"
 
 // Tạm ẩn các view chưa hoàn thiện; chỉ hiện các tính năng đang dùng thật.
-export const VISIBLE_NAV_KEYS: SecondaryNavKey[] = ["active_sprint", "resources"]
+export const VISIBLE_NAV_KEYS: SecondaryNavKey[] = ["active_sprint", "resources", "whiteboard"]
 
 interface SecondarySidebarProps {
   currentWorkspace: ApiWorkspace | null
@@ -104,6 +106,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
     },
     { key: "issues" as SecondaryNavKey, label: "Issues / Tasks", icon: AlertCircle, count: String(tasksCount) },
     { key: "resources" as SecondaryNavKey, label: "Resources", icon: LibraryBig },
+    { key: "whiteboard" as SecondaryNavKey, label: "Whiteboard", icon: PenTool },
     { key: "releases" as SecondaryNavKey, label: "Releases", icon: Package },
     { key: "team" as SecondaryNavKey, label: "Team Members", icon: Users, count: membersCount == null ? "—" : String(membersCount) },
     { key: "settings" as SecondaryNavKey, label: "Settings", icon: Settings },

@@ -15,6 +15,7 @@ import { CreateTaskModal } from "@/components/kanban/CreateTaskModal"
 import { CreateProjectModal } from "@/components/project/CreateProjectModal"
 import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModal"
 import { ResourcePage } from "@/components/resources/ResourcePage"
+import { WhiteboardPage } from "@/components/whiteboard/WhiteboardPage"
 import { AdminUsersPage } from "@/components/admin/AdminUsersPage"
 import { Button } from "@/components/ui/Button"
 import { api, type ApiProject, type ApiTask } from "@/services/api"
@@ -22,7 +23,7 @@ import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide
 
 const viewPaths: Record<SecondaryNavKey, string> = {
   dashboard: "/dashboard", roadmap: "/roadmap", active_sprint: "/active-sprint",
-  resources: "/resources", issues: "/issues", releases: "/releases",
+  resources: "/resources", whiteboard: "/whiteboard", issues: "/issues", releases: "/releases",
   team: "/team", settings: "/settings", admin: "/admin",
 }
 
@@ -44,6 +45,7 @@ export function AppContent() {
     ? "active_sprint"
     : activeSecondaryNav
   const isResourcesView = renderedSecondaryNav === "resources"
+  const isWhiteboardView = renderedSecondaryNav === "whiteboard"
   const isAdminView = renderedSecondaryNav === "admin" && currentUser?.role === "admin"
   const [resourceSearch, setResourceSearch] = useState("")
   const [resourceAddRequest, setResourceAddRequest] = useState(0)
@@ -437,6 +439,8 @@ export function AppContent() {
               onSearchChange={setResourceSearch}
               addRequestId={resourceAddRequest}
             />
+          ) : isWhiteboardView ? (
+            <WhiteboardPage key={selectedProject?.id || "no-project"} project={selectedProject} />
           ) : projects.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-surface/20">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
@@ -509,7 +513,7 @@ export function AppContent() {
       </div>
 
       {/* 4. Right Sidebar (Desktop & Tablet) */}
-      {!isResourcesView && !isAdminView && <RightSidebar
+      {!isResourcesView && !isWhiteboardView && !isAdminView && <RightSidebar
         tasks={tasks}
         loading={isLoadingProjects || isLoadingTasks}
         error={apiError || workspace.tasksError}

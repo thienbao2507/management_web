@@ -3,7 +3,7 @@ from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.task import Task
 from app.models.subtask import Subtask
-from app.models.project_resource import ProjectResource
+from app.models.project_resource import ProjectResource, ProjectResourcePin
 from app.models.request_user import RequestUser
 from app.models.user import User
 from app.models.project_membership import ProjectMembership
@@ -17,6 +17,7 @@ __all__ = [
     "Task",
     "Subtask",
     "ProjectResource",
+    "ProjectResourcePin",
     "RequestUser",
     "User",
     "ProjectMembership",

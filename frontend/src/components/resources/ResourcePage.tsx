@@ -13,6 +13,8 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  Pin,
+  PinOff,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -100,13 +102,20 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [pinningResourceIds, setPinningResourceIds] = useState<Set<string>>(new Set())
+  const [copiedResourceId, setCopiedResourceId] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const requestSequence = useRef(0)
   const previousAddRequest = useRef(addRequestId)
   const saveInFlight = useRef(false)
   const deleteInFlight = useRef(false)
+  const pinInFlight = useRef(new Set<string>())
+  const copyResetTimer = useRef<number | null>(null)
   const activeScope = useRef(scopeKey)
   useLayoutEffect(() => { activeScope.current = scopeKey }, [scopeKey])
+  useEffect(() => () => {
+    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
+  }, [])
 
   const dateRangeError = createdFrom && createdTo && createdFrom > createdTo
     ? "From date cannot be after To date."
@@ -134,6 +143,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     return () => window.clearTimeout(timeoutId)
   }, [toast])
 
+
   useEffect(() => {
     ++requestSequence.current
     setResources([])
@@ -145,6 +155,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     setEditingResource(null)
     setDetailResource(null)
     setDeleteResource(null)
+    setCopiedResourceId(null)
     setToast(null)
   }, [scopeKey])
 
@@ -205,11 +216,6 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filtersVisible = filtersOpen || Boolean(dateRangeError)
 
-  const [copiedResourceId, setCopiedResourceId] = useState<string | null>(null)
-  const copyResetTimer = useRef<number | null>(null)
-  useEffect(() => () => {
-    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
-  }, [])
 
   const showToast = (message: string, tone: ToastState["tone"]) => {
     setToast({ id: Date.now(), message, tone })
@@ -316,6 +322,31 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     } finally {
       if (activeScope.current === startedScope) setIsDeleting(false)
       deleteInFlight.current = false
+    }
+  }
+
+  const handleTogglePin = async (resource: ApiResource) => {
+    if (pinInFlight.current.has(resource.id)) return
+    pinInFlight.current.add(resource.id)
+    setPinningResourceIds((current) => new Set(current).add(resource.id))
+    const startedScope = scopeKey
+    try {
+      if (resource.is_pinned) await api.unpinResource(resource.id)
+      else await api.pinResource(resource.id)
+      if (activeScope.current !== startedScope) return
+      showToast(resource.is_pinned ? "Unpinned resource." : "Pinned resource to top.", "success")
+      setPage(1)
+      setRefreshKey((value) => value + 1)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update pin."
+      if (activeScope.current === startedScope) showToast(message, "error")
+    } finally {
+      pinInFlight.current.delete(resource.id)
+      setPinningResourceIds((current) => {
+        const next = new Set(current)
+        next.delete(resource.id)
+        return next
+      })
     }
   }
 
@@ -462,7 +493,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                         <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Type</th>
                         <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tags</th>
                         <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Updated</th>
-                        <th scope="col" className="w-12 px-2 text-right"><span className="sr-only">Actions</span></th>
+                        <th scope="col" className="w-[4.5rem] px-2 text-right"><span className="sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -486,7 +517,10 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                 <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${typeStyle.className}`}>
                                   <Icon aria-hidden="true" className="h-4 w-4" />
                                 </span>
-                                <span className="truncate text-xs font-semibold text-foreground group-hover:text-primary">{resource.title}</span>
+                                <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground group-hover:text-primary">
+                                  <span className="truncate">{resource.title}</span>
+                                  {resource.is_pinned && <Pin aria-label="Pinned" className="h-3 w-3 shrink-0 fill-primary text-primary" />}
+                                </span>
                               </button>
                             </td>
                             <td className="px-2">
@@ -536,10 +570,22 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                               <time dateTime={resource.updated_at} title={formatResourceDate(resource.updated_at, true)} className="block truncate whitespace-nowrap text-[11px] text-muted-foreground">{formatResourceDate(resource.updated_at)}</time>
                             </td>
                             <td className="px-2">
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-end gap-0.5">
+                                <button
+                                  type="button"
+                                  title={resource.is_pinned ? "Unpin" : "Pin to top"}
+                                  aria-label={resource.is_pinned ? "Unpin" : "Pin to top"}
+                                  disabled={pinningResourceIds.has(resource.id)}
+                                  onClick={(event) => { event.stopPropagation(); void handleTogglePin(resource) }}
+                                  className={`flex h-8 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-50 ${resource.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                                >
+                                  {resource.is_pinned
+                                    ? <PinOff aria-hidden="true" className="h-3.5 w-3.5" />
+                                    : <Pin aria-hidden="true" className="h-3.5 w-3.5" />}
+                                </button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <button type="button" aria-label={`Actions for ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                    <button type="button" aria-label={`Actions for ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                                       <MoreHorizontal className="h-4 w-4" />
                                     </button>
                                   </DropdownMenuTrigger>

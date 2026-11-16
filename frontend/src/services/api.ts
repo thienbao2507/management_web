@@ -128,6 +128,7 @@ export interface ApiResource {
   resource_type: ResourceType
   description?: string | null
   keywords: string[]
+  is_pinned: boolean
   created_at: string
   updated_at: string
 }
@@ -426,6 +427,18 @@ export const api = {
     return request<ApiResource>(`/resources/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
+    })
+  },
+
+  async pinResource(id: string): Promise<ApiResource> {
+    return request<ApiResource>(`/resources/${encodeURIComponent(id)}/pin`, {
+      method: "PUT",
+    })
+  },
+
+  async unpinResource(id: string): Promise<ApiResource> {
+    return request<ApiResource>(`/resources/${encodeURIComponent(id)}/pin`, {
+      method: "DELETE",
     })
   },
 

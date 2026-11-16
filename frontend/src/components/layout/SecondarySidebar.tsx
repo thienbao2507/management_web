@@ -16,6 +16,7 @@ import {
   Building2,
   Archive,
   ChevronsUpDown,
+  Shield,
 } from "lucide-react"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
@@ -44,6 +45,7 @@ export type SecondaryNavKey =
   | "releases"
   | "team"
   | "settings"
+  | "admin"
 
 // Tạm ẩn các view chưa hoàn thiện; chỉ hiện các tính năng đang dùng thật.
 export const VISIBLE_NAV_KEYS: SecondaryNavKey[] = ["active_sprint", "resources"]
@@ -280,7 +282,10 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           <DropdownMenuContent side="top" align="start" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="font-semibold">{currentUser?.display_name || "Not signed in"}</span>
+                <span className="flex items-center gap-2 font-semibold">
+                  <span className="truncate">{currentUser?.display_name || "Not signed in"}</span>
+                  {currentUser?.role === "admin" && <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">Admin</span>}
+                </span>
                 <span className="text-[10px] text-muted-foreground">
                   {currentUser?.job_title || "Authenticated profile"}
                 </span>
@@ -288,6 +293,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
+            {currentUser?.role === "admin" && <DropdownMenuItem className="gap-2" onSelect={() => onSelectItem("admin")}><Shield className="h-3.5 w-3.5" />Manage users</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
             <DropdownMenuSub>

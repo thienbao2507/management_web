@@ -82,6 +82,7 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         display_name=payload.display_name,
         email=payload.email,
         default_avatar_key=avatar_key_for_id(user_id),
+        role="user",
         is_active=True,
     )
     now = utcnow()

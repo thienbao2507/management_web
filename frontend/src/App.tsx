@@ -15,6 +15,7 @@ import { CreateTaskModal } from "@/components/kanban/CreateTaskModal"
 import { CreateProjectModal } from "@/components/project/CreateProjectModal"
 import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModal"
 import { ResourcePage } from "@/components/resources/ResourcePage"
+import { AdminUsersPage } from "@/components/admin/AdminUsersPage"
 import { Button } from "@/components/ui/Button"
 import { api, type ApiProject, type ApiTask } from "@/services/api"
 import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide-react"
@@ -22,13 +23,13 @@ import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide
 const viewPaths: Record<SecondaryNavKey, string> = {
   dashboard: "/dashboard", roadmap: "/roadmap", active_sprint: "/active-sprint",
   resources: "/resources", issues: "/issues", releases: "/releases",
-  team: "/team", settings: "/settings",
+  team: "/team", settings: "/settings", admin: "/admin",
 }
 
 function readView(): SecondaryNavKey {
   const view = Object.entries(viewPaths).find(([, path]) => `#${path}` === window.location.hash)?.[0] as SecondaryNavKey | undefined
   // "team" vẫn mở được từ nút Members trên Header; các view bị ẩn quay về Active Sprint.
-  return view && (VISIBLE_NAV_KEYS.includes(view) || view === "team") ? view : "active_sprint"
+  return view && (VISIBLE_NAV_KEYS.includes(view) || view === "team" || view === "admin") ? view : "active_sprint"
 }
 
 export function AppContent() {
@@ -39,7 +40,11 @@ export function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   // Navigation states
   const [activeSecondaryNav, setActiveSecondaryNav] = useState<SecondaryNavKey>(readView)
-  const isResourcesView = activeSecondaryNav === "resources"
+  const renderedSecondaryNav: SecondaryNavKey = activeSecondaryNav === "admin" && currentUser?.role !== "admin"
+    ? "active_sprint"
+    : activeSecondaryNav
+  const isResourcesView = renderedSecondaryNav === "resources"
+  const isAdminView = renderedSecondaryNav === "admin" && currentUser?.role === "admin"
   const [resourceSearch, setResourceSearch] = useState("")
   const [resourceAddRequest, setResourceAddRequest] = useState(0)
 
@@ -277,7 +282,7 @@ export function AppContent() {
         onCreateProjectClick={() => setIsCreateProjectModalOpen(true)}
         onCreateWorkspaceClick={() => setIsCreateWorkspaceModalOpen(true)}
         onSelectUnassigned={() => setSharedMode((value) => !value)}
-        activeItem={activeSecondaryNav}
+        activeItem={renderedSecondaryNav}
         onSelectItem={navigateView}
         isCollapsed={isSecondaryCollapsed}
         onToggleCollapse={() => setIsSecondaryCollapsed((prev) => !prev)}
@@ -329,7 +334,7 @@ export function AppContent() {
                     setSharedMode((value) => !value)
                     setIsMobileMenuOpen(false)
                   }}
-                  activeItem={activeSecondaryNav}
+                  activeItem={renderedSecondaryNav}
                   onSelectItem={(item) => {
                     navigateView(item)
                   }}
@@ -369,7 +374,7 @@ export function AppContent() {
           membersLoading={membersLoading}
           membersError={membersError}
           onMembersClick={() => navigateView("team")}
-          sprintLabel={activeSecondaryNav === "team" ? "Team Members" : sprintFilter === "all" ? "All tasks" : sprintFilter === "unsprinted" ? "Unsprinted / Backlog" : sprints.find((sprint) => sprint.id === sprintFilter)?.name || "Sprint"}
+          sprintLabel={renderedSecondaryNav === "team" ? "Team Members" : sprintFilter === "all" ? "All tasks" : sprintFilter === "unsprinted" ? "Unsprinted / Backlog" : sprints.find((sprint) => sprint.id === sprintFilter)?.name || "Sprint"}
         />
 
         {/* Global Error Alert Banner */}
@@ -403,6 +408,8 @@ export function AppContent() {
               <p className="max-w-sm text-xs text-muted-foreground">Use your verified account to access your personal Workspace and Projects shared with you.</p>
               <div className="flex gap-2"><Button onClick={() => openIdentity("login")}>Sign in</Button><Button variant="outline" onClick={() => openIdentity("register")}>Register</Button></div>
             </div>
+          ) : isAdminView ? (
+            <AdminUsersPage currentUserId={currentUser.id} />
           ) : workspaceLoading && !sharedMode ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Loading personal Workspace...</span></div>
           ) : workspaceError && !sharedMode ? (
@@ -449,9 +456,9 @@ export function AppContent() {
                 <span>{sharedMode ? "Back to Workspace" : "Create First Project"}</span>
               </Button>
             </div>
-          ) : activeSecondaryNav === "team" && selectedProject ? (
+          ) : renderedSecondaryNav === "team" && selectedProject ? (
             <ProjectMembers key={selectedProject.id} projectId={selectedProject.id} members={members} loading={membersLoading} error={membersError} onRefresh={workspace.refresh} canManage={!sharedMode} />
-          ) : activeSecondaryNav === "active_sprint" ? (
+          ) : renderedSecondaryNav === "active_sprint" ? (
             isLoadingTasks ? (
               <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -485,7 +492,7 @@ export function AppContent() {
                 <Sparkles className="h-7 w-7" />
               </div>
               <h2 className="text-base font-bold text-foreground">
-                {activeSecondaryNav.replace("_", " ").toUpperCase()} VIEW
+                {renderedSecondaryNav.replace("_", " ").toUpperCase()} VIEW
               </h2>
               <p className="mt-2 text-xs text-muted-foreground max-w-md leading-relaxed">
                 Active Sprint Kanban is connected directly to Neon PostgreSQL. Additional analytical views will be activated in subsequent phases.
@@ -502,7 +509,7 @@ export function AppContent() {
       </div>
 
       {/* 4. Right Sidebar (Desktop & Tablet) */}
-      {!isResourcesView && <RightSidebar
+      {!isResourcesView && !isAdminView && <RightSidebar
         tasks={tasks}
         loading={isLoadingProjects || isLoadingTasks}
         error={apiError || workspace.tasksError}

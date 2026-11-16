@@ -261,6 +261,14 @@ def require_authenticated_request(request: Request, db: Session = Depends(get_db
     return context
 
 
+def require_admin(
+    context: AuthContext = Depends(require_authenticated_request),
+) -> AuthContext:
+    if context.user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return context
+
+
 def validate_csrf(request: Request, context: AuthContext) -> None:
     origin = request_origin(request)
     if not origin or origin not in allowed_origins(request):

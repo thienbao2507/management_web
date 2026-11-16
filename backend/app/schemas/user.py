@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.schemas.project_resource import normalize_optional_text, normalize_required_text, validate_http_url
 
 AvatarKey = Literal["owl", "fish", "cat", "panda", "hedgehog", "robot"]
+UserRole = Literal["admin", "user"]
 
 
 class UserCreate(BaseModel):
@@ -70,12 +71,31 @@ class UserResponse(BaseModel):
     job_title: str | None
     default_avatar_key: AvatarKey
     custom_avatar_url: str | None
+    role: UserRole
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("role", mode="before")
+    @classmethod
+    def role_default_for_transient_user(cls, value):
+        return "user" if value is None else value
+
 
 class UserListResponse(BaseModel):
+    items: list[UserResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class AdminUserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+
+class AdminUserListResponse(BaseModel):
     items: list[UserResponse]
     total: int
     page: int

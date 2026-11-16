@@ -43,6 +43,7 @@ export interface ApiUser {
   job_title: string | null
   default_avatar_key: AvatarKey
   custom_avatar_url: string | null
+  role: "admin" | "user"
   is_active: boolean
   created_at: string
   updated_at: string
@@ -231,6 +232,16 @@ export const api = {
   logout(): Promise<{ message: string }> { return request("/auth/logout", { method: "POST", body: "{}" }) },
   getUser(id: string, signal?: AbortSignal): Promise<ApiUser> { return request(`/users/${encodeURIComponent(id)}`, { signal }) },
   updateUser(id: string, payload: Omit<Partial<UserPayload>, "email">): Promise<ApiUser> { return request(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }) },
+  listAdminUsers(params: { page?: number; page_size?: number; q?: string }): Promise<UserListResponse> {
+    const query = new URLSearchParams()
+    if (params.page !== undefined) query.set("page", String(params.page))
+    if (params.page_size !== undefined) query.set("page_size", String(params.page_size))
+    if (params.q) query.set("q", params.q)
+    return request(`/admin/users?${query.toString()}`)
+  },
+  updateAdminUser(id: string, payload: { role?: "admin" | "user"; is_active?: boolean }): Promise<ApiUser> {
+    return request(`/admin/users/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) })
+  },
   getMembers(projectId: string, signal?: AbortSignal): Promise<ApiMember[]> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { signal }) },
   addMember(projectId: string, email: string): Promise<ApiMember> { return request(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: JSON.stringify({ email }) }) },
   removeMember(projectId: string, userId: string): Promise<{ message: string }> { return request(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE" }) },

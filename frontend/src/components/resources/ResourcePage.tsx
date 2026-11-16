@@ -2,9 +2,11 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import {
   AlertCircle,
   Calendar,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
   ExternalLink,
   FolderKanban,
   LibraryBig,
@@ -203,6 +205,12 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filtersVisible = filtersOpen || Boolean(dateRangeError)
 
+  const [copiedResourceId, setCopiedResourceId] = useState<string | null>(null)
+  const copyResetTimer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
+  }, [])
+
   const showToast = (message: string, tone: ToastState["tone"]) => {
     setToast({ id: Date.now(), message, tone })
   }
@@ -215,6 +223,35 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     setCreatedFrom("")
     setCreatedTo("")
     setPage(1)
+  }
+
+  const handleCopyLink = async (resource: ApiResource) => {
+    let copied = false
+    try {
+      await navigator.clipboard.writeText(resource.url)
+      copied = true
+    } catch {
+      const textarea = document.createElement("textarea")
+      textarea.value = resource.url
+      textarea.setAttribute("readonly", "")
+      textarea.style.position = "fixed"
+      textarea.style.opacity = "0"
+      document.body.appendChild(textarea)
+      textarea.select()
+      try { copied = document.execCommand("copy") } catch { copied = false }
+      textarea.remove()
+    }
+    if (!copied) {
+      showToast("Unable to copy link.", "error")
+      return
+    }
+    setCopiedResourceId(resource.id)
+    showToast("Copied link.", "success")
+    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
+    copyResetTimer.current = window.setTimeout(() => {
+      setCopiedResourceId(null)
+      copyResetTimer.current = null
+    }, 1500)
   }
 
   const openCreateForm = () => {
@@ -421,11 +458,11 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                     <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <tr className="h-9">
                         <th scope="col" className="pl-14 pr-3">Name</th>
-                        <th scope="col" className="hidden w-[17%] px-3 [@container(min-width:40rem)]:table-cell">Project</th>
+                        <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Link</th>
                         <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Type</th>
                         <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tags</th>
                         <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Updated</th>
-                        <th scope="col" className="w-[4.5rem] px-2 text-right [@container(min-width:40rem)]:w-28">Actions</th>
+                        <th scope="col" className="w-12 px-2 text-right"><span className="sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -452,8 +489,32 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                 <span className="truncate text-xs font-semibold text-foreground group-hover:text-primary">{resource.title}</span>
                               </button>
                             </td>
-                            <td className="hidden px-3 [@container(min-width:40rem)]:table-cell">
-                              <span title={resource.project_name} className="block truncate text-[11px] text-muted-foreground">{resource.project_name}</span>
+                            <td className="px-2">
+                              <div className="flex items-center gap-0.5">
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Open link for ${resource.title}`}
+                                  title="Open Link"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  <span className="hidden whitespace-nowrap [@container(min-width:40rem)]:inline">Open Link</span>
+                                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                                </a>
+                                <button
+                                  type="button"
+                                  title="Copy link"
+                                  aria-label={`Copy link for ${resource.title}`}
+                                  onClick={(event) => { event.stopPropagation(); void handleCopyLink(resource) }}
+                                  className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  {copiedResourceId === resource.id
+                                    ? <Check aria-hidden="true" className="h-3.5 w-3.5 text-emerald-600" />
+                                    : <Copy aria-hidden="true" className="h-3.5 w-3.5" />}
+                                </button>
+                              </div>
                             </td>
                             <td className="px-2">
                               <Badge variant="outline" className="max-w-full whitespace-nowrap px-1.5 text-[10px]" title={resource.resource_type}>
@@ -476,18 +537,6 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                             </td>
                             <td className="px-2">
                               <div className="flex items-center justify-end gap-1">
-                                <a
-                                  href={resource.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label={`Open link for ${resource.title}`}
-                                  title="Open Link"
-                                  onClick={(event) => event.stopPropagation()}
-                                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                >
-                                  <span className="hidden whitespace-nowrap [@container(min-width:40rem)]:inline">Open Link</span>
-                                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                                </a>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <button type="button" aria-label={`Actions for ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">

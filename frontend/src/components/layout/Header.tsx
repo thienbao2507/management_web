@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 import {
   Bell,
   Plus,
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/Button"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher"
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,8 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   isResourcesView,
   members, membersLoading, membersError, onMembersClick, sprintLabel,
 }) => {
-  const { currentUser, usersById, openIdentity, logout } = useUsers()
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const { usersById } = useUsers()
   return (
     <>
     <header className="flex h-13 shrink-0 items-center justify-between border-b border-border/80 bg-card/80 px-3.5 sm:px-4 backdrop-blur-md select-none z-10">
@@ -195,38 +193,6 @@ export const Header: React.FC<HeaderProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* User Profile Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center rounded-full focus:outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
-              aria-label="User profile menu"
-            >
-              <UserAvatar
-                user={currentUser}
-                size="sm"
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-semibold">{currentUser?.display_name || "Not signed in"}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {currentUser?.job_title || "Authenticated profile"}
-                </span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
-            {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
-            {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
-            <DropdownMenuItem>Workspace Settings</DropdownMenuItem>
-            <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         {/* Toggle Right Sidebar button (Desktop) */}
         <button
           type="button"
@@ -238,7 +204,6 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </div>
     </header>
-    <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </>
   )
 }

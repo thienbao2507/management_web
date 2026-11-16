@@ -219,6 +219,7 @@ class ProjectResourceResponse(BaseModel):
     resource_type: ResourceType
     description: str | None
     keywords: list[str]
+    is_pinned: bool = False
     created_at: datetime
     updated_at: datetime
 

@@ -12,6 +12,7 @@ export function IdentityDialog({ inline = false, disabled = false }: { inline?: 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [job, setJob] = useState("")
   const [token, setToken] = useState(initialToken)
   const [pending, setPending] = useState(false)
@@ -23,6 +24,7 @@ export function IdentityDialog({ inline = false, disabled = false }: { inline?: 
     setError(null)
     setMessage(null)
     setPassword("")
+    setConfirmPassword("")
     openIdentity(mode)
     if (inline) window.location.hash = `/${mode}`
   }
@@ -55,16 +57,19 @@ export function IdentityDialog({ inline = false, disabled = false }: { inline?: 
         openIdentity(null)
         if (["#/login", "#/register", "#/verify"].includes(window.location.hash)) window.location.hash = "/active-sprint"
       } else if (dialogMode === "register") {
+        if (password !== confirmPassword) throw new Error("Passwords do not match.")
         const result = await register(name.trim(), email, password)
         if (result.status === "completed") {
           setMessage(result.message || "Account created successfully. You can now sign in.")
           setPassword("")
+          setConfirmPassword("")
           openIdentity("login")
           if (inline) window.location.hash = "/login"
         } else {
           const delivery = result.email_delivery === "sent" ? "Check your inbox for a verification link." : "We could not send your verification email. Please retry with Resend or contact the administrator."
           setMessage(`${result.message} ${delivery}`)
           setPassword("")
+          setConfirmPassword("")
           openIdentity("verify")
           if (inline) window.location.hash = "/verify"
         }
@@ -101,7 +106,10 @@ export function IdentityDialog({ inline = false, disabled = false }: { inline?: 
         {(dialogMode === "register" || dialogMode === "edit") && <label className="block space-y-1 text-xs">Display name<Input value={name} onChange={(event) => setName(event.target.value)} maxLength={255} required disabled={pending} autoFocus /></label>}
         {(dialogMode === "login" || dialogMode === "register" || dialogMode === "verify" || dialogMode === "edit") && <label className="block space-y-1 text-xs">Email<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required={dialogMode !== "verify"} disabled={pending || dialogMode === "edit"} autoComplete="email" autoFocus={dialogMode === "login"} /></label>}
         {(dialogMode === "login" || dialogMode === "register") && <label className="block space-y-1 text-xs">Password<Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={dialogMode === "register" ? 8 : 1} maxLength={128} required disabled={pending} autoComplete={dialogMode === "register" ? "new-password" : "current-password"} /></label>}
-        {dialogMode === "register" && <p className="text-[11px] text-muted-foreground">Use 8–128 characters. Spaces and Unicode are allowed.</p>}
+        {dialogMode === "register" && <label className="block space-y-1 text-xs">Confirm password<Input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={128} required disabled={pending} autoComplete="new-password" aria-invalid={confirmPassword.length > 0 && confirmPassword !== password} /></label>}
+        {dialogMode === "register" && (confirmPassword.length > 0 && confirmPassword !== password
+          ? <p role="alert" className="text-[11px] text-red-600 dark:text-red-400">Passwords do not match.</p>
+          : <p className="text-[11px] text-muted-foreground">Use 8–128 characters. Spaces and Unicode are allowed.</p>)}
         {dialogMode === "verify" && <label className="block space-y-1 text-xs">Verification token<Input value={token} onChange={(event) => setToken(event.target.value)} minLength={32} maxLength={256} required disabled={pending} autoFocus /></label>}
         {dialogMode === "edit" && <label className="block space-y-1 text-xs">Job title<Input value={job} onChange={(event) => setJob(event.target.value)} maxLength={150} disabled={pending} /></label>}
         <div className="flex flex-wrap justify-end gap-2">
@@ -109,7 +117,7 @@ export function IdentityDialog({ inline = false, disabled = false }: { inline?: 
           {dialogMode === "register" && <Button type="button" variant="outline" onClick={() => changeMode("login")} disabled={pending}>Back to login</Button>}
           {dialogMode === "verify" && <><Button type="button" variant="outline" onClick={() => changeMode("login")} disabled={pending}>Back to login</Button><Button type="button" variant="outline" disabled={disabled || pending || !email.trim()} onClick={async () => { if (saving.current) return; saving.current = true; setPending(true); setError(null); try { setMessage(await resendVerification(email)) } catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to request another email") } finally { saving.current = false; setPending(false) } }}>Resend</Button></>}
           {dialogMode === "edit" && <Button type="button" variant="outline" onClick={() => openIdentity(null)} disabled={pending}>Cancel</Button>}
-          <Button type="submit" disabled={disabled || pending || (dialogMode === "register" && (!name.trim() || password.length < 8)) || (dialogMode === "verify" && token.trim().length < 32)}>{pending ? "Working..." : dialogMode === "register" ? "Register" : dialogMode === "verify" ? "Verify email" : dialogMode === "edit" ? "Save profile" : "Sign in"}</Button>
+          <Button type="submit" disabled={disabled || pending || (dialogMode === "register" && (!name.trim() || password.length < 8 || password !== confirmPassword)) || (dialogMode === "verify" && token.trim().length < 32)}>{pending ? "Working..." : dialogMode === "register" ? "Register" : dialogMode === "verify" ? "Verify email" : dialogMode === "edit" ? "Save profile" : "Sign in"}</Button>
         </div>
       </fieldset>
     </form>

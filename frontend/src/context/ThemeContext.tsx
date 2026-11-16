@@ -2,26 +2,57 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 
 export type Theme = "light" | "dark" | "system"
 
+export const ACCENT_COLORS = [
+  { key: "blue", label: "Blue", swatch: "hsl(221 83% 53%)" },
+  { key: "indigo", label: "Indigo", swatch: "hsl(243 75% 59%)" },
+  { key: "violet", label: "Violet", swatch: "hsl(262 83% 58%)" },
+  { key: "pink", label: "Pink", swatch: "hsl(330 81% 60%)" },
+  { key: "red", label: "Red", swatch: "hsl(0 72% 51%)" },
+  { key: "orange", label: "Orange", swatch: "hsl(21 90% 48%)" },
+  { key: "green", label: "Green", swatch: "hsl(161 94% 30%)" },
+  { key: "teal", label: "Teal", swatch: "hsl(175 84% 32%)" },
+] as const satisfies readonly { key: string; label: string; swatch: string }[]
+
+export type AccentColor = (typeof ACCENT_COLORS)[number]["key"]
+
 interface ThemeContextType {
   theme: Theme
   resolvedTheme: "light" | "dark"
+  accent: AccentColor
   setTheme: (theme: Theme) => void
+  setAccent: (accent: AccentColor) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
-const STORAGE_KEY = "management_web_theme"
+const THEME_STORAGE_KEY = "management_web_theme"
+const ACCENT_STORAGE_KEY = "management_web_accent"
+
+const isAccentColor = (value: string | null): value is AccentColor =>
+  ACCENT_COLORS.some(({ key }) => key === value)
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === "light" || saved === "dark" || saved === "system") {
-      return saved
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY)
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved
+      }
+    } catch {
+      // Use the system theme when storage is unavailable.
     }
     return "system"
   })
 
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light")
+  const [accent, setAccentState] = useState<AccentColor>(() => {
+    try {
+      const saved = localStorage.getItem(ACCENT_STORAGE_KEY)
+      return isAccentColor(saved) ? saved : "blue"
+    } catch {
+      return "blue"
+    }
+  })
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -60,13 +91,30 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => mediaQuery.removeEventListener("change", handleChange)
   }, [theme])
 
+  useEffect(() => {
+    document.documentElement.dataset.accent = accent
+  }, [accent])
+
   const setTheme = (newTheme: Theme) => {
-    localStorage.setItem(STORAGE_KEY, newTheme)
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme)
+    } catch {
+      // Keep the in-memory selection when storage is unavailable.
+    }
     setThemeState(newTheme)
   }
 
+  const setAccent = (newAccent: AccentColor) => {
+    try {
+      localStorage.setItem(ACCENT_STORAGE_KEY, newAccent)
+    } catch {
+      // Keep the in-memory selection when storage is unavailable.
+    }
+    setAccentState(newAccent)
+  }
+
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, accent, setTheme, setAccent }}>
       {children}
     </ThemeContext.Provider>
   )

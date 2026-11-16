@@ -24,6 +24,9 @@
           } else {
             document.documentElement.classList.remove('dark');
           }
+          const accent = localStorage.getItem('management_web_accent');
+          const accentColors = ['blue', 'indigo', 'violet', 'pink', 'red', 'orange', 'green', 'teal'];
+          document.documentElement.dataset.accent = accentColors.includes(accent) ? accent : 'blue';
         } catch (e) {}
       })();
     </script>

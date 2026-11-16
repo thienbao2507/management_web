@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
+import { ACCENT_COLORS, useTheme } from "@/context/ThemeContext"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { cn } from "@/lib/utils"
 import { type ApiProject, type ApiWorkspace } from "@/services/api"
@@ -28,6 +29,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu"
 
@@ -84,6 +88,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
   className,
 }) => {
   const { currentUser, openIdentity, logout } = useUsers()
+  const { accent, setAccent } = useTheme()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   const menuItems = [
@@ -145,7 +150,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
               aria-label={`Select project: ${selectedProject?.name || "none"}`}
               className="flex w-full items-center gap-2 min-w-0 text-left rounded-lg border border-border/70 p-1.5 hover:bg-muted/70 transition-colors group"
             >
-              <div title={selectedProject?.key} className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-100 px-0.5 text-blue-700 dark:bg-blue-950/80 dark:text-blue-400 font-bold text-[10px]">
+              <div title={selectedProject?.key} className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/15 px-0.5 text-primary font-bold text-[10px]">
                 {selectedProject?.key ? <span className="truncate">{selectedProject.key}</span> : <FolderGit2 className="h-4 w-4" />}
               </div>
               <div className="min-w-0 flex-1">
@@ -239,7 +244,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                 </div>
 
                 {item.badge && (
-                  <span className="rounded-full bg-blue-500/15 px-1.5 py-0.2 text-[9px] font-semibold text-primary">
+                  <span className="rounded-full bg-primary/15 px-1.5 py-0.2 text-[9px] font-semibold text-primary">
                     {item.badge}
                   </span>
                 )}
@@ -285,7 +290,27 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
             {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
-            <DropdownMenuItem>Workspace Settings</DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="gap-2">
+                <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: ACCENT_COLORS.find((color) => color.key === accent)?.swatch }} />
+                Theme
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-40">
+                {ACCENT_COLORS.map(({ key, label, swatch }) => (
+                  <DropdownMenuItem
+                    key={key}
+                    onSelect={(event) => { event.preventDefault(); setAccent(key) }}
+                    aria-checked={accent === key}
+                    role="menuitemradio"
+                    className="gap-2"
+                  >
+                    <span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: swatch }} />
+                    <span className="flex-1">{label}</span>
+                    {accent === key && <Check aria-hidden="true" className="h-3.5 w-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -76,6 +76,90 @@
     --surface: 0 0% 7%;
     --surface-hover: 0 0% 11%;
   }
+
+  :root[data-accent="indigo"] {
+    --primary: 243 75% 59%;
+    --primary-hover: 243 75% 54%;
+    --ring: 243 75% 59%;
+  }
+
+  :root.dark[data-accent="indigo"] {
+    --primary: 239 84% 67%;
+    --primary-hover: 239 84% 62%;
+    --ring: 239 84% 67%;
+  }
+
+  :root[data-accent="violet"] {
+    --primary: 262 83% 58%;
+    --primary-hover: 262 83% 53%;
+    --ring: 262 83% 58%;
+  }
+
+  :root.dark[data-accent="violet"] {
+    --primary: 258 90% 66%;
+    --primary-hover: 258 90% 61%;
+    --ring: 258 90% 66%;
+  }
+
+  :root[data-accent="pink"] {
+    --primary: 330 81% 60%;
+    --primary-hover: 330 81% 55%;
+    --ring: 330 81% 60%;
+  }
+
+  :root.dark[data-accent="pink"] {
+    --primary: 329 86% 70%;
+    --primary-hover: 329 86% 65%;
+    --ring: 329 86% 70%;
+  }
+
+  :root[data-accent="red"] {
+    --primary: 0 72% 51%;
+    --primary-hover: 0 72% 46%;
+    --ring: 0 72% 51%;
+  }
+
+  :root.dark[data-accent="red"] {
+    --primary: 0 84% 60%;
+    --primary-hover: 0 84% 55%;
+    --ring: 0 84% 60%;
+  }
+
+  :root[data-accent="orange"] {
+    --primary: 21 90% 48%;
+    --primary-hover: 21 90% 43%;
+    --ring: 21 90% 48%;
+  }
+
+  :root.dark[data-accent="orange"] {
+    --primary: 25 95% 53%;
+    --primary-hover: 25 95% 48%;
+    --ring: 25 95% 53%;
+  }
+
+  :root[data-accent="green"] {
+    --primary: 161 94% 30%;
+    --primary-hover: 161 94% 25%;
+    --ring: 161 94% 30%;
+  }
+
+  :root.dark[data-accent="green"] {
+    --primary: 160 84% 39%;
+    --primary-hover: 160 84% 34%;
+    --ring: 160 84% 39%;
+  }
+
+  :root[data-accent="teal"] {
+    --primary: 175 84% 32%;
+    --primary-hover: 175 84% 27%;
+    --ring: 175 84% 32%;
+  }
+
+  :root.dark[data-accent="teal"] {
+    --primary: 172 66% 50%;
+    --primary-hover: 172 66% 45%;
+    --ring: 172 66% 50%;
+  }
 }
 
 @layer base {

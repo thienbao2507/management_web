@@ -53,7 +53,7 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
         {/* Top: App Brand Logo */}
         <div className="flex flex-col items-center gap-6">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-md shadow-blue-500/30 cursor-pointer hover:scale-105 transition-transform"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/30 cursor-pointer hover:scale-105 transition-transform"
             title="Apex Command Center"
           >
             <Zap className="h-5 w-5 fill-white text-white" />
@@ -82,7 +82,7 @@ export const PrimarySidebar: React.FC<PrimarySidebarProps> = ({
                     >
                       {/* Active indicator bar */}
                       {isActive && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-blue-400" />
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />
                       )}
                       <Icon className="h-4.5 w-4.5" />
                     </button>

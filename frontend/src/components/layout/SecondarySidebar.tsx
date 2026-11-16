@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   LayoutDashboard,
   Map,
@@ -15,7 +15,11 @@ import {
   ChevronDown,
   Building2,
   Archive,
+  ChevronsUpDown,
 } from "lucide-react"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { useUsers } from "@/context/UserContext"
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { cn } from "@/lib/utils"
 import { type ApiProject, type ApiWorkspace } from "@/services/api"
 import {
@@ -79,6 +83,9 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
   membersCount,
   className,
 }) => {
+  const { currentUser, openIdentity, logout } = useUsers()
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+
   const menuItems = [
     { key: "dashboard" as SecondaryNavKey, label: "Dashboard", icon: LayoutDashboard },
     { key: "roadmap" as SecondaryNavKey, label: "Roadmap", icon: Map },
@@ -248,16 +255,42 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
         </nav>
       </div>
 
-      {/* Database Connection Status Badge */}
+      {/* User profile menu */}
       <div className="p-3 border-t border-border/70">
-        <div className="rounded-lg border border-border/80 bg-surface/50 p-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-semibold text-foreground">Neon PostgreSQL</span>
-          </div>
-          <span className="text-[10px] text-muted-foreground font-mono">Live</span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="User profile menu"
+              className="flex w-full items-center gap-2 rounded-lg border border-border/80 bg-surface/50 p-2 text-left transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <UserAvatar user={currentUser} size="sm" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[11px] font-semibold text-foreground">{currentUser?.display_name || "Not signed in"}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{currentUser?.email || currentUser?.job_title || "Authenticated profile"}</span>
+              </span>
+              <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span className="font-semibold">{currentUser?.display_name || "Not signed in"}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {currentUser?.job_title || "Authenticated profile"}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
+            <DropdownMenuItem>Workspace Settings</DropdownMenuItem>
+            <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </aside>
   )
 }

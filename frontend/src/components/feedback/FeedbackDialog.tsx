@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useRef, useState } from "react"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
@@ -15,6 +15,7 @@ import { api, type FeedbackCategory } from "@/services/api"
 interface FeedbackDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSubmitted: () => void
 }
 
 const MAX_IMAGES = 3
@@ -90,6 +91,7 @@ async function compressImage(file: File): Promise<string> {
 export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   open,
   onOpenChange,
+  onSubmitted,
 }) => {
   const [category, setCategory] = useState<FeedbackCategory>("feature")
   const [content, setContent] = useState("")
@@ -97,15 +99,9 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   const [pending, setPending] = useState(false)
   const [processingImages, setProcessingImages] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
   const imagesRef = useRef<string[]>([])
   const submitInFlight = useRef(false)
   const imageProcessingInFlight = useRef(false)
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current)
-  }, [])
 
   const updateImages = (nextImages: string[]) => {
     imagesRef.current = nextImages
@@ -123,7 +119,6 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     if (!nextOpen && pending) return
     if (!nextOpen) {
       setError(null)
-      setMessage(null)
     }
     onOpenChange(nextOpen)
   }
@@ -183,15 +178,11 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     submitInFlight.current = true
     setPending(true)
     setError(null)
-    setMessage(null)
     try {
       await api.createFeedback({ category, content: trimmedContent, images })
       resetForm()
-      setMessage("Thanks! Your feedback was sent.")
-      closeTimer.current = setTimeout(() => {
-        setMessage(null)
-        onOpenChange(false)
-      }, 900)
+      onOpenChange(false)
+      onSubmitted()
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Unable to send feedback.")
     } finally {
@@ -219,12 +210,6 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               {error}
             </div>
           )}
-          {message && (
-            <div role="status" className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
-              {message}
-            </div>
-          )}
-
           <label className="block space-y-1.5 text-xs font-medium">
             <span>Type</span>
             <select

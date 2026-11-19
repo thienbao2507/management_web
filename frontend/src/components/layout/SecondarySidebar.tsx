@@ -23,6 +23,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
 import { ACCENT_COLORS, useTheme } from "@/context/ThemeContext"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
+import { FeedbackSubmittedDialog } from "@/components/feedback/FeedbackSubmittedDialog"
 import { MyFeedbackDialog } from "@/components/feedback/MyFeedbackDialog"
 import { cn } from "@/lib/utils"
 import { type ApiProject, type ApiWorkspace } from "@/services/api"
@@ -95,6 +96,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
   const { currentUser, openIdentity, logout } = useUsers()
   const { accent, setAccent } = useTheme()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackSubmittedOpen, setFeedbackSubmittedOpen] = useState(false)
   const [myFeedbackOpen, setMyFeedbackOpen] = useState(false)
 
   const menuItems = [
@@ -327,8 +329,20 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
-      <MyFeedbackDialog open={myFeedbackOpen} onOpenChange={setMyFeedbackOpen} />
+      <FeedbackDialog
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        onSubmitted={() => setFeedbackSubmittedOpen(true)}
+      />
+      <FeedbackSubmittedDialog open={feedbackSubmittedOpen} onOpenChange={setFeedbackSubmittedOpen} />
+      <MyFeedbackDialog
+        open={myFeedbackOpen}
+        onOpenChange={setMyFeedbackOpen}
+        onCreateNew={() => {
+          setMyFeedbackOpen(false)
+          setFeedbackOpen(true)
+        }}
+      />
     </aside>
   )
 }

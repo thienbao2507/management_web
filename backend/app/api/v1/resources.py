@@ -17,6 +17,7 @@ from app.core.auth import get_request_auth, require_authenticated_request
 from app.core.authorization import accessible_project_filter, require_project_access, require_workspace_owner
 from app.models.project import Project
 from app.models.workspace import Workspace
+from app.models.user import User
 from app.models.project_resource import ProjectResource, ProjectResourcePin
 from app.schemas.project_resource import (
     ProjectResourceCreate,
@@ -110,19 +111,34 @@ def resource_access_map(
     return {project_id: owner_id == user_id for project_id, owner_id in rows}
 
 
+def project_owner_map(db: Session, project_ids: set[str]) -> dict[str, User]:
+    """Map project id -> its workspace owner; used as author for legacy links without created_by."""
+    if not project_ids:
+        return {}
+    rows = (
+        db.query(Project.id, User)
+        .join(Workspace, Workspace.id == Project.workspace_id)
+        .join(User, User.id == Workspace.owner_user_id)
+        .filter(Project.id.in_(project_ids))
+        .all()
+    )
+    return {project_id: user for project_id, user in rows}
+
+
 def resource_to_response(
     resource: ProjectResource,
     *,
     is_pinned: bool = False,
     user_id: str,
     access: dict[str, bool],
+    owners: dict[str, User] | None = None,
 ) -> ProjectResourceResponse:
     can_manage = resource.project_id in access
     if resource.created_by_user_id is not None:
         can_toggle_public = resource.created_by_user_id == user_id
     else:
         can_toggle_public = access.get(resource.project_id, False)
-    author = resource.created_by
+    author = resource.created_by or (owners or {}).get(resource.project_id)
     return ProjectResourceResponse(
         id=resource.id,
         project_id=resource.project_id,
@@ -155,7 +171,8 @@ def single_resource_response(
     db: Session, user_id: str, resource: ProjectResource, *, is_pinned: bool
 ) -> ProjectResourceResponse:
     access = resource_access_map(db, user_id, {resource.project_id})
-    return resource_to_response(resource, is_pinned=is_pinned, user_id=user_id, access=access)
+    owners = project_owner_map(db, {resource.project_id}) if resource.created_by_user_id is None else None
+    return resource_to_response(resource, is_pinned=is_pinned, user_id=user_id, access=access, owners=owners)
 
 
 def accessible_resource_query(db: Session, user_id: str):
@@ -321,9 +338,10 @@ def list_resources(
         total = 0
 
     access = resource_access_map(db, user_id, {resource.project_id for resource in resources})
+    owners = project_owner_map(db, {r.project_id for r in resources if r.created_by_user_id is None})
     return ProjectResourceListResponse(
         items=[
-            resource_to_response(resource, is_pinned=bool(row.is_pinned), user_id=user_id, access=access)
+            resource_to_response(resource, is_pinned=bool(row.is_pinned), user_id=user_id, access=access, owners=owners)
             for resource, row in zip(resources, rows)
         ],
         total=total,
@@ -438,15 +456,30 @@ def set_resource_public(
             detail="Only the link author can change its visibility.",
         )
 
+    if payload.is_public and not resource.is_public:
+        already_public = (
+            db.query(ProjectResource)
+            .join(Project, Project.id == ProjectResource.project_id)
+            .filter(
+                Project.is_archived.is_(False),
+                ProjectResource.is_public.is_(True),
+                ProjectResource.url == resource.url.strip(),
+                ProjectResource.id != resource.id,
+            )
+            .first()
+        )
+        if already_public is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"This link is already public: {already_public.title}",
+            )
+
     resource.is_public = payload.is_public
     resource.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(resource)
-    return resource_to_response(
-        resource,
-        is_pinned=resource_is_pinned(db, user_id, resource.id),
-        user_id=user_id,
-        access=access,
+    return single_resource_response(
+        db, user_id, resource, is_pinned=resource_is_pinned(db, user_id, resource.id)
     )
 
 

@@ -351,7 +351,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background">
+    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

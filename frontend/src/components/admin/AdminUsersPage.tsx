@@ -129,7 +129,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background">
+    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>

@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import String, and_, cast, func, or_
+from sqlalchemy import String, and_, cast, func, not_, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
@@ -16,12 +16,15 @@ from app.core.database import get_db
 from app.core.auth import get_request_auth, require_authenticated_request
 from app.core.authorization import accessible_project_filter, require_project_access, require_workspace_owner
 from app.models.project import Project
+from app.models.workspace import Workspace
 from app.models.project_resource import ProjectResource, ProjectResourcePin
 from app.schemas.project_resource import (
     ProjectResourceCreate,
     ProjectResourceListResponse,
     ProjectResourceResponse,
     ProjectResourceUpdate,
+    ResourceAuthor,
+    ResourcePublicUpdate,
     ResourceType,
 )
 
@@ -90,9 +93,34 @@ def application_day_bounds(
     return start, end_exclusive
 
 
+def resource_access_map(
+    db: Session, user_id: str, project_ids: set[str]
+) -> dict[str, bool]:
+    """Map accessible project id -> whether the user owns its workspace (one query)."""
+    if not project_ids:
+        return {}
+    rows = (
+        db.query(Project.id, Workspace.owner_user_id)
+        .outerjoin(Workspace, Workspace.id == Project.workspace_id)
+        .filter(Project.id.in_(project_ids), *accessible_project_filter(user_id))
+        .all()
+    )
+    return {project_id: owner_id == user_id for project_id, owner_id in rows}
+
+
 def resource_to_response(
-    resource: ProjectResource, *, is_pinned: bool = False
+    resource: ProjectResource,
+    *,
+    is_pinned: bool = False,
+    user_id: str,
+    access: dict[str, bool],
 ) -> ProjectResourceResponse:
+    can_manage = resource.project_id in access
+    if resource.created_by_user_id is not None:
+        can_toggle_public = resource.created_by_user_id == user_id
+    else:
+        can_toggle_public = access.get(resource.project_id, False)
+    author = resource.created_by
     return ProjectResourceResponse(
         id=resource.id,
         project_id=resource.project_id,
@@ -103,9 +131,29 @@ def resource_to_response(
         description=resource.description,
         keywords=resource.keywords or [],
         is_pinned=is_pinned,
+        is_public=bool(resource.is_public),
+        created_by=(
+            ResourceAuthor(
+                id=author.id,
+                display_name=author.display_name,
+                default_avatar_key=author.default_avatar_key,
+                custom_avatar_url=author.custom_avatar_url,
+            )
+            if author is not None
+            else None
+        ),
+        can_manage=can_manage,
+        can_toggle_public=can_toggle_public,
         created_at=resource.created_at.astimezone(timezone.utc),
         updated_at=resource.updated_at.astimezone(timezone.utc),
     )
+
+
+def single_resource_response(
+    db: Session, user_id: str, resource: ProjectResource, *, is_pinned: bool
+) -> ProjectResourceResponse:
+    access = resource_access_map(db, user_id, {resource.project_id})
+    return resource_to_response(resource, is_pinned=is_pinned, user_id=user_id, access=access)
 
 
 def accessible_resource_query(db: Session, user_id: str):
@@ -114,6 +162,34 @@ def accessible_resource_query(db: Session, user_id: str):
         .join(Project, Project.id == ProjectResource.project_id)
         .filter(Project.is_archived.is_(False), *accessible_project_filter(user_id))
     )
+
+
+def visible_resource_query(db: Session, user_id: str):
+    return (
+        db.query(ProjectResource)
+        .join(Project, Project.id == ProjectResource.project_id)
+        .filter(
+            Project.is_archived.is_(False),
+            or_(
+                and_(*accessible_project_filter(user_id)),
+                ProjectResource.is_public.is_(True),
+            ),
+        )
+    )
+
+
+def raise_if_duplicate(
+    db: Session, user_id: str, url: str, *, exclude_id: str | None = None
+) -> None:
+    query = visible_resource_query(db, user_id).filter(ProjectResource.url == url.strip())
+    if exclude_id:
+        query = query.filter(ProjectResource.id != exclude_id)
+    existing = query.first()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This link already exists: {existing.title}",
+        )
 
 
 def resource_is_pinned(db: Session, user_id: str, resource_id: str) -> bool:
@@ -151,6 +227,8 @@ def list_resources(
     user_id = get_request_auth(request).user.id
     start, end_exclusive = application_day_bounds(created_from, created_to)
     filters = []
+    scope_filters = []
+    include_public = False
 
     if project_id:
         project_id = project_id.strip()
@@ -160,13 +238,15 @@ def list_resources(
         require_workspace_schema(db)
         workspace_id = workspace_id.strip()
         require_workspace_owner(db, workspace_id, user_id)
-        filters.append(Project.workspace_id == workspace_id)
+        scope_filters.append(Project.workspace_id == workspace_id)
+        include_public = True
     elif unassigned:
         filters.append(False)
     elif shared:
         from app.models.project_membership import ProjectMembership
         from app.models.workspace import Workspace
-        filters.extend([
+        include_public = True
+        scope_filters.extend([
             Project.id.in_(db.query(ProjectMembership.project_id).filter(ProjectMembership.user_id == user_id)),
             Project.workspace_id.in_(db.query(Workspace.id).filter(Workspace.owner_user_id != user_id)),
         ])
@@ -198,7 +278,19 @@ def list_resources(
             )
         )
 
-    base_query = accessible_resource_query(db, user_id).filter(*filters)
+    if include_public and not project_id:
+        accessible = and_(*accessible_project_filter(user_id))
+        base_query = visible_resource_query(db, user_id).filter(
+            or_(
+                and_(accessible, *scope_filters),
+                and_(ProjectResource.is_public.is_(True), not_(accessible)),
+            ),
+            *filters,
+        )
+    elif project_id or unassigned:
+        base_query = accessible_resource_query(db, user_id).filter(*scope_filters, *filters)
+    else:
+        base_query = visible_resource_query(db, user_id).filter(*filters)
     pin_join = and_(
         ProjectResourcePin.resource_id == ProjectResource.id,
         ProjectResourcePin.user_id == user_id,
@@ -226,9 +318,10 @@ def list_resources(
     else:
         total = 0
 
+    access = resource_access_map(db, user_id, {resource.project_id for resource in resources})
     return ProjectResourceListResponse(
         items=[
-            resource_to_response(resource, is_pinned=bool(row.is_pinned))
+            resource_to_response(resource, is_pinned=bool(row.is_pinned), user_id=user_id, access=access)
             for resource, row in zip(resources, rows)
         ],
         total=total,
@@ -242,16 +335,15 @@ def list_resources(
 def get_resource(resource_id: str, request: Request, db: Session = Depends(get_db)):
     user_id = get_request_auth(request).user.id
     resource = (
-        accessible_resource_query(db, user_id)
+        visible_resource_query(db, user_id)
         .options(joinedload(ProjectResource.project))
         .filter(ProjectResource.id == resource_id)
         .first()
     )
     if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
-    return resource_to_response(
-        resource,
-        is_pinned=resource_is_pinned(db, user_id, resource.id),
+    return single_resource_response(
+        db, user_id, resource, is_pinned=resource_is_pinned(db, user_id, resource.id)
     )
 
 
@@ -261,8 +353,12 @@ def get_resource(resource_id: str, request: Request, db: Session = Depends(get_d
     status_code=status.HTTP_201_CREATED,
 )
 def create_resource(payload: ProjectResourceCreate, request: Request, db: Session = Depends(get_db)):
-    project = require_project_access(db, payload.project_id, get_request_auth(request).user.id).project
+    user_id = get_request_auth(request).user.id
+    project = require_project_access(db, payload.project_id, user_id).project
+    raise_if_duplicate(db, user_id, payload.url)
     resource = ProjectResource(
+        created_by_user_id=user_id,
+        is_public=False,
         project_id=payload.project_id,
         title=payload.title,
         url=payload.url,
@@ -274,7 +370,7 @@ def create_resource(payload: ProjectResourceCreate, request: Request, db: Sessio
     db.commit()
     db.refresh(resource)
     resource.project = project
-    return resource_to_response(resource, is_pinned=False)
+    return single_resource_response(db, user_id, resource, is_pinned=False)
 
 
 @router.patch("/{resource_id}", response_model=ProjectResourceResponse)
@@ -300,6 +396,8 @@ def update_resource(
         resource.project = require_project_access(db, update_data["project_id"], user_id).project
     if "resource_type" in update_data:
         update_data["resource_type"] = update_data["resource_type"].value
+    if "url" in update_data and update_data["url"] is not None:
+        raise_if_duplicate(db, user_id, update_data["url"], exclude_id=resource.id)
 
     if update_data:
         for field, value in update_data.items():
@@ -308,9 +406,45 @@ def update_resource(
         db.commit()
         db.refresh(resource)
 
+    return single_resource_response(
+        db, user_id, resource, is_pinned=resource_is_pinned(db, user_id, resource.id)
+    )
+
+
+@router.put("/{resource_id}/public", response_model=ProjectResourceResponse)
+def set_resource_public(
+    resource_id: str,
+    payload: ResourcePublicUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_request_auth(request).user.id
+    resource = (
+        visible_resource_query(db, user_id)
+        .options(joinedload(ProjectResource.project))
+        .filter(ProjectResource.id == resource_id)
+        .first()
+    )
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    access = resource_access_map(db, user_id, {resource.project_id})
+    response = resource_to_response(resource, user_id=user_id, access=access)
+    if not response.can_toggle_public:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the link author can change its visibility.",
+        )
+
+    resource.is_public = payload.is_public
+    resource.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(resource)
     return resource_to_response(
         resource,
         is_pinned=resource_is_pinned(db, user_id, resource.id),
+        user_id=user_id,
+        access=access,
     )
 
 
@@ -318,7 +452,7 @@ def update_resource(
 def pin_resource(resource_id: str, request: Request, db: Session = Depends(get_db)):
     user_id = get_request_auth(request).user.id
     resource = (
-        accessible_resource_query(db, user_id)
+        visible_resource_query(db, user_id)
         .options(joinedload(ProjectResource.project))
         .filter(ProjectResource.id == resource_id)
         .first()
@@ -334,14 +468,14 @@ def pin_resource(resource_id: str, request: Request, db: Session = Depends(get_d
     )
     db.commit()
 
-    return resource_to_response(resource, is_pinned=True)
+    return single_resource_response(db, user_id, resource, is_pinned=True)
 
 
 @router.delete("/{resource_id}/pin", response_model=ProjectResourceResponse)
 def unpin_resource(resource_id: str, request: Request, db: Session = Depends(get_db)):
     user_id = get_request_auth(request).user.id
     resource = (
-        accessible_resource_query(db, user_id)
+        visible_resource_query(db, user_id)
         .options(joinedload(ProjectResource.project))
         .filter(ProjectResource.id == resource_id)
         .first()
@@ -354,7 +488,7 @@ def unpin_resource(resource_id: str, request: Request, db: Session = Depends(get
         db.delete(pin)
         db.commit()
 
-    return resource_to_response(resource, is_pinned=False)
+    return single_resource_response(db, user_id, resource, is_pinned=False)
 
 
 @router.delete("/{resource_id}")

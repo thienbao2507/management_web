@@ -1,10 +1,11 @@
 import React from "react"
-import { CalendarDays, ExternalLink, FolderKanban, Pencil, Tag, Trash2 } from "lucide-react"
+import { CalendarDays, ExternalLink, FolderKanban, Globe, Lock, Pencil, Tag, Trash2 } from "lucide-react"
+import { UserAvatar } from "@/components/ui/UserAvatar"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Drawer, DrawerContent } from "@/components/ui/Drawer"
 import { DialogTitle, DialogDescription } from "@/components/ui/Dialog"
-import type { ApiResource } from "@/services/api"
+import type { ApiResource, ApiUser } from "@/services/api"
 import { formatResourceDate, RESOURCE_TYPE_STYLES } from "./resourceUtils"
 
 
@@ -38,6 +39,10 @@ export const ResourceDetailDrawer: React.FC<ResourceDetailDrawerProps> = ({
           <DialogDescription className="sr-only">Resource metadata and link for {resource.project_name}.</DialogDescription>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge variant="outline">{resource.resource_type}</Badge>
+            <Badge variant={resource.is_public ? "secondary" : "outline"} className="gap-1">
+              {resource.is_public ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+              {resource.is_public ? "Public" : "Private"}
+            </Badge>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <FolderKanban className="h-3.5 w-3.5" /> {resource.project_name}
             </span>
@@ -75,6 +80,16 @@ export const ResourceDetailDrawer: React.FC<ResourceDetailDrawerProps> = ({
             </div>
           </section>
 
+          {resource.created_by && (
+            <section>
+              <h3 className="mb-1.5 font-semibold text-foreground">Author</h3>
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <UserAvatar user={resource.created_by as unknown as ApiUser} size="sm" />
+                <span className="font-medium text-foreground">{resource.created_by.display_name}</span>
+              </p>
+            </section>
+          )}
+
           <section className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2">
             <div>
               <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Created</span>
@@ -95,12 +110,16 @@ export const ResourceDetailDrawer: React.FC<ResourceDetailDrawerProps> = ({
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-5">
-          <Button onClick={() => onEdit(resource)} variant="outline" className="gap-1.5">
-            <Pencil className="h-3.5 w-3.5" /> Edit
-          </Button>
-          <Button onClick={() => onDelete(resource)} variant="destructive" className="gap-1.5">
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </Button>
+          {resource.can_manage && (
+            <Button onClick={() => onEdit(resource)} variant="outline" className="gap-1.5">
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
+          {resource.can_manage && (
+            <Button onClick={() => onDelete(resource)} variant="destructive" className="gap-1.5">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          )}
           <a
             href={resource.url}
             target="_blank"

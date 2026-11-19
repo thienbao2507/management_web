@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  ExternalLink,
   FolderKanban,
   LibraryBig,
   Loader2,
@@ -39,10 +38,13 @@ import {
 } from "@/components/ui/DropdownMenu"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SearchInput } from "@/components/ui/Input"
+import { Switch } from "@/components/ui/Switch"
+import { UserAvatar } from "@/components/ui/UserAvatar"
 import {
   api,
   RESOURCE_TYPES,
   type ApiProject,
+  type ApiUser,
   type ApiResource,
   type ResourcePayload,
   type ResourceType,
@@ -325,6 +327,27 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     }
   }
 
+  const handleTogglePublic = async (resource: ApiResource, next: boolean) => {
+    const startedScope = scopeKey
+    const applyPublic = (value: boolean) => {
+      const patch = (item: ApiResource) => item.id === resource.id ? { ...item, is_public: value } : item
+      setResources((current) => current.map(patch))
+      setDetailResource((current) => current ? patch(current) : current)
+    }
+    applyPublic(next)
+    try {
+      const updated = await api.setResourcePublic(resource.id, next)
+      if (activeScope.current !== startedScope) return
+      const merge = (item: ApiResource) => item.id === updated.id ? updated : item
+      setResources((current) => current.map(merge))
+      setDetailResource((current) => current ? merge(current) : current)
+    } catch (error) {
+      if (activeScope.current !== startedScope) return
+      applyPublic(resource.is_public)
+      showToast(error instanceof Error ? error.message : "Unable to update visibility.", "error")
+    }
+  }
+
   const handleTogglePin = async (resource: ApiResource) => {
     if (pinInFlight.current.has(resource.id)) return
     pinInFlight.current.add(resource.id)
@@ -386,7 +409,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
         </div>
 
         {filtersVisible && (
-        <section id="resource-filters" aria-label="Resource filters" className="mt-2 rounded-lg border border-border bg-card p-3 shadow-sm">
+        <section id="resource-filters" aria-label="Resource filters" className="mt-2 rounded-lg border border-white/40 bg-white/45 p-3 shadow-sm backdrop-blur-md dark:border-border/70 dark:bg-surface/60 dark:backdrop-blur-none">
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-44 flex-1 space-y-1 text-[11px] font-medium sm:max-w-xs">
               <span>Project</span>
@@ -484,12 +507,12 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                   <h2 id={`project-${items[0].project_id}`} title={items[0].project_name} className="min-w-0 truncate text-xs font-bold">{items[0].project_name}</h2>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{items.length} on this page</span>
                 </div>
-                <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card" style={{ containerType: "inline-size" }}>
+                <div className="min-w-0 overflow-hidden rounded-lg border border-white/40 bg-white/45 backdrop-blur-md dark:border-border/70 dark:bg-surface/60 dark:backdrop-blur-none" style={{ containerType: "inline-size" }}>
                   <table aria-label={`${items[0].project_name} resources`} className="w-full table-fixed border-collapse text-left">
                     <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <tr className="h-9">
                         <th scope="col" className="pl-14 pr-3">Name</th>
-                        <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Link</th>
+                        <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Public</th>
                         <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Type</th>
                         <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tags</th>
                         <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Updated</th>
@@ -507,36 +530,44 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                             className="group h-14 cursor-pointer border-t border-border/60 transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
                           >
                             <td className="px-3">
-                              <button
-                                type="button"
-                                aria-label={`View details for ${resource.title}`}
-                                title={resource.title}
-                                onClick={(event) => { event.stopPropagation(); setDetailResource(resource) }}
-                                className="flex h-12 w-full min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                              >
+                              <div className="flex h-12 w-full min-w-0 items-center gap-3">
                                 <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${typeStyle.className}`}>
                                   <Icon aria-hidden="true" className="h-4 w-4" />
                                 </span>
-                                <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground group-hover:text-primary">
-                                  <span className="truncate">{resource.title}</span>
-                                  {resource.is_pinned && <Pin aria-label="Pinned" className="h-3 w-3 shrink-0 fill-primary text-primary" />}
+                                <span className="flex min-w-0 flex-col justify-center">
+                                  <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground group-hover:text-primary">
+                                    <a
+                                      href={resource.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title={resource.title}
+                                      onClick={(event) => event.stopPropagation()}
+                                      className="truncate rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    >
+                                      {resource.title}
+                                    </a>
+                                    {resource.is_pinned && <Pin aria-label="Pinned" className="h-3 w-3 shrink-0 fill-primary text-primary" />}
+                                  </span>
+                                  {resource.created_by && (
+                                    <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+                                      <UserAvatar user={resource.created_by as unknown as ApiUser} size="xs" className="h-4 w-4 text-[8px]" />
+                                      <span className="truncate">by {resource.created_by.display_name}</span>
+                                    </span>
+                                  )}
                                 </span>
-                              </button>
+                              </div>
                             </td>
                             <td className="px-2">
-                              <div className="flex items-center gap-0.5">
-                                <a
-                                  href={resource.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label={`Open link for ${resource.title}`}
-                                  title="Open Link"
+                              <div className="flex items-center gap-1">
+                                <Switch
+                                  size="sm"
+                                  aria-label="Public link"
+                                  checked={resource.is_public}
+                                  disabled={!resource.can_toggle_public}
+                                  title={resource.can_toggle_public ? undefined : "Only the author can change this"}
                                   onClick={(event) => event.stopPropagation()}
-                                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                >
-                                  <span className="hidden whitespace-nowrap [@container(min-width:40rem)]:inline">Open Link</span>
-                                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                                </a>
+                                  onCheckedChange={(next) => void handleTogglePublic(resource, next)}
+                                />
                                 <button
                                   type="button"
                                   title="Copy link"
@@ -591,8 +622,8 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
                                     <DropdownMenuItem onClick={() => setDetailResource(resource)}>View details</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                    {resource.can_manage && <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>}
+                                    {resource.can_manage && <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

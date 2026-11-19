@@ -210,6 +210,19 @@ class ProjectResourceUpdate(BaseModel):
         return normalize_keywords(value)
 
 
+class ResourceAuthor(BaseModel):
+    id: str
+    display_name: str
+    default_avatar_key: str | None = None
+    custom_avatar_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ResourcePublicUpdate(BaseModel):
+    is_public: bool
+
+
 class ProjectResourceResponse(BaseModel):
     id: str
     project_id: str
@@ -220,6 +233,10 @@ class ProjectResourceResponse(BaseModel):
     description: str | None
     keywords: list[str]
     is_pinned: bool = False
+    is_public: bool = False
+    created_by: ResourceAuthor | None = None
+    can_manage: bool = False
+    can_toggle_public: bool = False
     created_at: datetime
     updated_at: datetime
 

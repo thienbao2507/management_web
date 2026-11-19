@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, String, Text, false, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
@@ -18,6 +18,8 @@ class ProjectResource(Base):
         Index("ix_project_resources_created_at", "created_at"),
         Index("ix_project_resources_project_created_at", "project_id", "created_at"),
         Index("ix_project_resources_type_created_at", "resource_type", "created_at"),
+        Index("ix_project_resources_url", "url"),
+        Index("ix_project_resources_public_created", "is_public", "created_at"),
     )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -36,6 +38,12 @@ class ProjectResource(Base):
         default=list,
         server_default="{}",
     )
+    created_by_user_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL", name="fk_project_resources_created_by_user_id_users"),
+        nullable=True,
+    )
+    is_public = Column(Boolean, nullable=False, default=False, server_default=false())
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -51,6 +59,7 @@ class ProjectResource(Base):
     )
 
     project = relationship("Project", back_populates="resources")
+    created_by = relationship("User", foreign_keys=[created_by_user_id], lazy="joined")
 
 
 class ProjectResourcePin(Base):

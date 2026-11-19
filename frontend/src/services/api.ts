@@ -207,6 +207,13 @@ export const RESOURCE_TYPES = [
 
 export type ResourceType = (typeof RESOURCE_TYPES)[number]
 
+export interface ResourceAuthor {
+  id: string
+  display_name: string
+  default_avatar_key: string | null
+  custom_avatar_url: string | null
+}
+
 export interface ApiResource {
   id: string
   project_id: string
@@ -217,6 +224,10 @@ export interface ApiResource {
   description?: string | null
   keywords: string[]
   is_pinned: boolean
+  is_public: boolean
+  created_by: ResourceAuthor | null
+  can_manage: boolean
+  can_toggle_public: boolean
   created_at: string
   updated_at: string
 }
@@ -581,6 +592,13 @@ export const api = {
   async unpinResource(id: string): Promise<ApiResource> {
     return request<ApiResource>(`/resources/${encodeURIComponent(id)}/pin`, {
       method: "DELETE",
+    })
+  },
+
+  async setResourcePublic(id: string, isPublic: boolean): Promise<ApiResource> {
+    return request<ApiResource>(`/resources/${encodeURIComponent(id)}/public`, {
+      method: "PUT",
+      body: JSON.stringify({ is_public: isPublic }),
     })
   },
 

@@ -12,6 +12,7 @@ from app.api.v1.project_workspace import router as project_workspace_router
 from app.api.v1.workspaces import router as workspaces_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feedback import router as feedback_router
+from app.api.v1.user_background import router as user_background_router
 from app.api.v1.admin import admin_feedback_router, router as admin_router
 
 app = FastAPI(
@@ -39,6 +40,7 @@ app.include_router(project_workspace_router, prefix=settings.API_V1_STR)
 app.include_router(workspaces_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
+app.include_router(user_background_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(admin_feedback_router, prefix=settings.API_V1_STR)
 
@@ -48,6 +50,10 @@ async def database_programming_error(request, error: ProgrammingError):
     if getattr(error.orig, "pgcode", None) == "42P01" and "whiteboards" in (error.statement or ""):
         return JSONResponse(status_code=503, content={
             "detail": "Whiteboards are not available until the database migration is applied."
+        })
+    if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "user_backgrounds" in (error.statement or ""):
+        return JSONResponse(status_code=503, content={
+            "detail": "Custom backgrounds are not available until the database migration is applied."
         })
     if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "auth_" in (error.statement or ""):
         return JSONResponse(status_code=503, content={

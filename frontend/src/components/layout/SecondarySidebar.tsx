@@ -22,6 +22,7 @@ import {
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
 import { ACCENT_COLORS, useTheme } from "@/context/ThemeContext"
+import { useBackground } from "@/context/BackgroundContext"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { FeedbackSubmittedDialog } from "@/components/feedback/FeedbackSubmittedDialog"
 import { MyFeedbackDialog } from "@/components/feedback/MyFeedbackDialog"
@@ -95,6 +96,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
 }) => {
   const { currentUser, openIdentity, logout } = useUsers()
   const { accent, setAccent } = useTheme()
+  const { setDialogOpen } = useBackground()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackSubmittedOpen, setFeedbackSubmittedOpen] = useState(false)
   const [myFeedbackOpen, setMyFeedbackOpen] = useState(false)
@@ -323,6 +325,10 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                     {accent === key && <Check aria-hidden="true" className="h-3.5 w-3.5 text-primary" />}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+                  Background…
+                </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>

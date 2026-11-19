@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from
 import { ThemeProvider } from "@/context/ThemeContext"
 import { UserProvider, useUsers } from "@/context/UserContext"
 import { WorkspaceProvider, useWorkspace } from "@/context/WorkspaceContext"
+import { BackgroundProvider } from "@/context/BackgroundContext"
 import { useProjectWorkspace, type WorkspaceToken } from "@/context/useProjectWorkspace"
 import { IdentityDialog } from "@/components/identity/IdentityDialog"
 import { AuthPage } from "@/components/identity/AuthPage"
@@ -18,6 +19,8 @@ import { ResourcePage } from "@/components/resources/ResourcePage"
 import { WhiteboardPage } from "@/components/whiteboard/WhiteboardPage"
 import { AdminUsersPage } from "@/components/admin/AdminUsersPage"
 import { FeedbackThankYou } from "@/components/feedback/FeedbackThankYou"
+import { AppBackground } from "@/components/background/AppBackground"
+import { BackgroundDialog } from "@/components/background/BackgroundDialog"
 import { Button } from "@/components/ui/Button"
 import { api, type ApiProject, type ApiTask } from "@/services/api"
 import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide-react"
@@ -400,6 +403,8 @@ export function AppContent() {
 
         {/* Dynamic View Container */}
         <main className="flex flex-1 overflow-hidden relative">
+          <AppBackground />
+          <div className="relative z-[1] flex min-w-0 flex-1 overflow-hidden">
           {identityLoading ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -510,6 +515,7 @@ export function AppContent() {
               </Button>
             </div>
           )}
+          </div>
         </main>
       </div>
 
@@ -569,7 +575,16 @@ function AppSession() {
   const { currentUser, loading } = useUsers()
   if (loading) return <div className="flex min-h-screen items-center justify-center gap-2 bg-background text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />Restoring your session...</div>
   if (!currentUser) return <AuthPage />
-  return <WorkspaceProvider><AppContent /><IdentityDialog /><FeedbackThankYou currentUserId={currentUser.id} /></WorkspaceProvider>
+  return (
+    <WorkspaceProvider>
+      <BackgroundProvider currentUserId={currentUser.id}>
+        <AppContent />
+        <BackgroundDialog />
+        <IdentityDialog />
+        <FeedbackThankYou currentUserId={currentUser.id} />
+      </BackgroundProvider>
+    </WorkspaceProvider>
+  )
 }
 
 export default function App() {

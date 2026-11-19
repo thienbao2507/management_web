@@ -74,6 +74,12 @@ export interface WorkspacePayload {
   description?: string | null
 }
 
+export interface UserBackground {
+  image: string
+  dim: number
+  updated_at: string
+}
+
 export type FeedbackCategory = "bug" | "feature" | "other"
 export type FeedbackStatus = "new" | "in_progress" | "done" | "rejected"
 
@@ -299,6 +305,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   getAuthStatus(signal?: AbortSignal): Promise<AuthStatus> { return request("/auth/status", { signal }) },
   getMe(signal?: AbortSignal): Promise<AuthSessionResponse> { return request("/auth/me", { signal }) },
+  getMyBackground(signal?: AbortSignal): Promise<{ background: UserBackground | null }> {
+    return request("/me/background", { signal })
+  },
+  saveMyBackground(payload: { image: string; dim: number }): Promise<UserBackground> {
+    return request("/me/background", { method: "PUT", body: JSON.stringify(payload) })
+  },
+  updateMyBackgroundDim(dim: number): Promise<UserBackground> {
+    return request("/me/background", { method: "PATCH", body: JSON.stringify({ dim }) })
+  },
+  deleteMyBackground(): Promise<void> {
+    return request("/me/background", { method: "DELETE" })
+  },
   register(payload: { display_name: string; email: string; password: string }): Promise<RegisterResponse> {
     return request("/auth/register", { method: "POST", body: JSON.stringify(payload) })
   },

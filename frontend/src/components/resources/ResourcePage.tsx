@@ -51,7 +51,7 @@ import {
 } from "@/services/api"
 import { ResourceDetailDrawer } from "./ResourceDetailDrawer"
 import { ResourceFormDialog } from "./ResourceFormDialog"
-import { formatResourceDate, RESOURCE_TYPE_STYLES } from "./resourceUtils"
+import { formatResourceDate, RESOURCE_TYPE_STYLES, resourceTypeLabel } from "./resourceUtils"
 
 
 interface ResourcePageProps {
@@ -120,7 +120,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
   }, [])
 
   const dateRangeError = createdFrom && createdTo && createdFrom > createdTo
-    ? "From date cannot be after To date."
+    ? "Ngày bắt đầu không được sau ngày kết thúc."
     : null
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       if (page > Math.max(1, result.pages)) setPage(Math.max(1, result.pages))
     }).catch((error: unknown) => {
       if (controller.signal.aborted || sequence !== requestSequence.current) return
-      setLoadError(error instanceof Error ? error.message : "Unable to load resources.")
+      setLoadError(error instanceof Error ? error.message : "Không thể tải danh sách Resources.")
     }).finally(() => {
       if (sequence === requestSequence.current) setIsLoading(false)
     })
@@ -250,11 +250,11 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       textarea.remove()
     }
     if (!copied) {
-      showToast("Unable to copy link.", "error")
+      showToast("Không thể sao chép liên kết.", "error")
       return
     }
     setCopiedResourceId(resource.id)
-    showToast("Copied link.", "success")
+    showToast("Đã sao chép liên kết.", "success")
     if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
     copyResetTimer.current = window.setTimeout(() => {
       setCopiedResourceId(null)
@@ -292,7 +292,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       if (!editingResource && page !== 1) setPage(1)
       else setRefreshKey((value) => value + 1)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to save resource."
+      const message = error instanceof Error ? error.message : "Không thể lưu Resource."
       if (activeScope.current === startedScope) showToast(message, "error")
       throw error
     } finally {
@@ -310,13 +310,13 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     try {
       await api.deleteResource(deleteResource.id)
       if (activeScope.current !== startedScope) return
-      showToast(`Deleted “${deleteResource.title}”.`, "success")
+      showToast(`Đã xoá “${deleteResource.title}”.`, "success")
       setDeleteResource(null)
       setDetailResource(null)
       if (resources.length === 1 && page > 1) setPage((value) => value - 1)
       else setRefreshKey((value) => value + 1)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to delete resource."
+      const message = error instanceof Error ? error.message : "Không thể xoá Resource."
       if (activeScope.current === startedScope) {
         setDeleteError(message)
         showToast(message, "error")
@@ -344,7 +344,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
     } catch (error) {
       if (activeScope.current !== startedScope) return
       applyPublic(resource.is_public)
-      showToast(error instanceof Error ? error.message : "Unable to update visibility.", "error")
+      showToast(error instanceof Error ? error.message : "Không thể cập nhật chế độ hiển thị.", "error")
     }
   }
 
@@ -357,11 +357,11 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       if (resource.is_pinned) await api.unpinResource(resource.id)
       else await api.pinResource(resource.id)
       if (activeScope.current !== startedScope) return
-      showToast(resource.is_pinned ? "Unpinned resource." : "Pinned resource to top.", "success")
+      showToast(resource.is_pinned ? "Đã bỏ ghim Resource." : "Đã ghim Resource lên đầu.", "success")
       setPage(1)
       setRefreshKey((value) => value + 1)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to update pin."
+      const message = error instanceof Error ? error.message : "Không thể cập nhật ghim."
       if (activeScope.current === startedScope) showToast(message, "error")
     } finally {
       pinInFlight.current.delete(resource.id)
@@ -378,16 +378,16 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Project Resources</h1>
-            <p className="mt-1 text-xs text-muted-foreground">{shared ? "Resources from Projects shared with you." : "Resources limited to your personal Workspace."}</p>
+            <h1 className="text-xl font-bold tracking-tight">Resources của dự án</h1>
+            <p className="mt-1 text-xs text-muted-foreground">{shared ? "Resources từ các dự án được chia sẻ với bạn." : "Resources trong Workspace cá nhân của bạn."}</p>
           </div>
           <Button onClick={openCreateForm} className="gap-1.5 self-start sm:hidden" disabled={projects.length === 0}>
-            <Plus className="h-4 w-4" /> Add Resource
+            <Plus className="h-4 w-4" /> Thêm Resource
           </Button>
         </div>
 
         <div className="mt-4 sm:hidden">
-          <SearchInput aria-label="Search all resources" placeholder="Search all resources..." value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} onClear={() => onSearchChange("")} />
+          <SearchInput aria-label="Tìm kiếm tất cả Resources" placeholder="Tìm kiếm tất cả Resources..." value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} onClear={() => onSearchChange("")} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
@@ -399,52 +399,52 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
             aria-controls="resource-filters"
             className="gap-1.5"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" /> Filter
+            <SlidersHorizontal className="h-3.5 w-3.5" /> Lọc
             {activeFilterCount > 0 && (
               <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground">{activeFilterCount}</span>
             )}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersVisible ? "rotate-180" : ""}`} />
           </Button>
-          <span className="text-[11px] text-muted-foreground">{isLoading ? "Updating results..." : `${total} resource${total === 1 ? "" : "s"}`}</span>
+          <span className="text-[11px] text-muted-foreground">{isLoading ? "Đang cập nhật kết quả..." : `${total} Resource`}</span>
         </div>
 
         {filtersVisible && (
-        <section id="resource-filters" aria-label="Resource filters" className="mt-2 rounded-lg border border-white/40 bg-white/45 p-3 shadow-sm backdrop-blur-md dark:border-border/70 dark:bg-surface/60 dark:backdrop-blur-none">
+        <section id="resource-filters" aria-label="Bộ lọc Resource" className="mt-2 rounded-lg border border-white/40 bg-white/45 p-3 shadow-sm backdrop-blur-md dark:border-border/70 dark:bg-surface/60 dark:backdrop-blur-none">
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-44 flex-1 space-y-1 text-[11px] font-medium sm:max-w-xs">
-              <span>Project</span>
+              <span>Dự án</span>
               <select
-                aria-label="Project"
+                aria-label="Dự án"
                 value={projectId}
                 onChange={(event) => { setProjectId(event.target.value); setPage(1) }}
                 className={`${selectClassName} w-full`}
               >
-                <option value="">All projects</option>
+                <option value="">Tất cả dự án</option>
                 {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
               </select>
             </label>
 
             <label className="min-w-40 space-y-1 text-[11px] font-medium">
-              <span>Resource Type</span>
+              <span>Loại Resource</span>
               <select
-                aria-label="Resource Type"
+                aria-label="Loại Resource"
                 value={resourceType}
                 onChange={(event) => { setResourceType(event.target.value as ResourceType | ""); setPage(1) }}
                 className={`${selectClassName} w-full`}
               >
-                <option value="">All types</option>
-                {RESOURCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                <option value="">Tất cả loại</option>
+                {RESOURCE_TYPES.map((type) => <option key={type} value={type}>{resourceTypeLabel(type)}</option>)}
               </select>
             </label>
 
             <label className="space-y-1 text-[11px] font-medium">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                From
+                Từ ngày
               </span>
               <input
                 type="date"
-                aria-label="From"
+                aria-label="Từ ngày"
                 value={createdFrom}
                 onChange={(event) => { setCreatedFrom(event.target.value); setPage(1) }}
                 className={`${selectClassName} [color-scheme:light] dark:[color-scheme:dark] cursor-pointer`}
@@ -454,11 +454,11 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
             <label className="space-y-1 text-[11px] font-medium">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                To
+                Đến ngày
               </span>
               <input
                 type="date"
-                aria-label="To"
+                aria-label="Đến ngày"
                 value={createdTo}
                 onChange={(event) => { setCreatedTo(event.target.value); setPage(1) }}
                 className={`${selectClassName} [color-scheme:light] dark:[color-scheme:dark] cursor-pointer`}
@@ -466,36 +466,36 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
             </label>
 
             <Button variant="outline" size="sm" onClick={resetFilters} className="gap-1.5">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset
+              <RotateCcw className="h-3.5 w-3.5" /> Đặt lại
             </Button>
           </div>
           {dateRangeError && <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{dateRangeError}</p>}
-          <p className="mt-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Search covers project, resource, description, keywords, and type. Dates: UTC+7.</p>
+          <p className="mt-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Tìm kiếm theo dự án, Resource, mô tả, từ khoá và loại. Ngày theo múi giờ UTC+7.</p>
         </section>
         )}
 
         {loadError ? (
           <EmptyState
             icon={AlertCircle}
-            title="Could not load resources"
+            title="Không thể tải Resources"
             description={loadError}
             className="mt-5 flex-1"
-            action={<Button variant="outline" onClick={() => setRefreshKey((value) => value + 1)} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Retry</Button>}
+            action={<Button variant="outline" onClick={() => setRefreshKey((value) => value + 1)} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Thử lại</Button>}
           />
         ) : isLoading && resources.length === 0 ? (
           <div className="flex flex-1 items-center justify-center gap-2 py-16 text-xs text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading project resources...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Đang tải Resources...
           </div>
         ) : total === 0 ? (
           <EmptyState
             icon={LibraryBig}
-            title={hasFilters ? "No resources match these filters" : "No project resources yet"}
-            description={hasFilters ? "Reset or adjust the search and filters to see more results." : "Add the first shared link to build your project resource library."}
+            title={hasFilters ? "Không có Resource nào khớp bộ lọc" : "Chưa có Resource nào"}
+            description={hasFilters ? "Đặt lại hoặc điều chỉnh tìm kiếm và bộ lọc để xem thêm kết quả." : "Thêm liên kết đầu tiên để xây dựng thư viện Resources cho dự án."}
             className="mt-5 flex-1"
             action={hasFilters ? (
-              <Button variant="outline" onClick={resetFilters}>Reset filters</Button>
+              <Button variant="outline" onClick={resetFilters}>Đặt lại bộ lọc</Button>
             ) : (
-              <Button onClick={openCreateForm} disabled={projects.length === 0} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Resource</Button>
+              <Button onClick={openCreateForm} disabled={projects.length === 0} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Thêm Resource</Button>
             )}
           />
         ) : (
@@ -505,18 +505,18 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                 <div className="mb-2 flex min-w-0 items-center gap-2">
                   <FolderKanban className="h-4 w-4 shrink-0 text-primary" />
                   <h2 id={`project-${items[0].project_id}`} title={items[0].project_name} className="min-w-0 truncate text-xs font-bold">{items[0].project_name}</h2>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{items.length} on this page</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{items.length} trên trang này</span>
                 </div>
                 <div className="min-w-0 overflow-hidden rounded-lg border border-white/40 bg-white/45 backdrop-blur-md dark:border-border/70 dark:bg-surface/60 dark:backdrop-blur-none" style={{ containerType: "inline-size" }}>
-                  <table aria-label={`${items[0].project_name} resources`} className="w-full table-fixed border-collapse text-left">
+                  <table aria-label={`Resources của ${items[0].project_name}`} className="w-full table-fixed border-collapse text-left">
                     <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <tr className="h-9">
-                        <th scope="col" className="pl-14 pr-3">Name</th>
-                        <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Public</th>
-                        <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Type</th>
-                        <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tags</th>
-                        <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Updated</th>
-                        <th scope="col" className="w-[4.5rem] px-2 text-right"><span className="sr-only">Actions</span></th>
+                        <th scope="col" className="pl-14 pr-3">Tên</th>
+                        <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Công khai</th>
+                        <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Loại</th>
+                        <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tag</th>
+                        <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Cập nhật</th>
+                        <th scope="col" className="w-[4.5rem] px-2 text-right"><span className="sr-only">Thao tác</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -546,12 +546,12 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                     >
                                       {resource.title}
                                     </a>
-                                    {resource.is_pinned && <Pin aria-label="Pinned" className="h-3 w-3 shrink-0 fill-primary text-primary" />}
+                                    {resource.is_pinned && <Pin aria-label="Đã ghim" className="h-3 w-3 shrink-0 fill-primary text-primary" />}
                                   </span>
                                   {resource.created_by && (
                                     <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
                                       <UserAvatar user={resource.created_by as unknown as ApiUser} size="xs" className="h-4 w-4 text-[8px]" />
-                                      <span className="truncate">by {resource.created_by.display_name}</span>
+                                      <span className="truncate">bởi {resource.created_by.display_name}</span>
                                     </span>
                                   )}
                                 </span>
@@ -561,17 +561,17 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                               <div className="flex items-center gap-1">
                                 <Switch
                                   size="sm"
-                                  aria-label="Public link"
+                                  aria-label="Liên kết công khai"
                                   checked={resource.is_public}
                                   disabled={!resource.can_toggle_public}
-                                  title={resource.can_toggle_public ? undefined : "Only the author can change this"}
+                                  title={resource.can_toggle_public ? undefined : "Chỉ tác giả mới có thể thay đổi"}
                                   onClick={(event) => event.stopPropagation()}
                                   onCheckedChange={(next) => void handleTogglePublic(resource, next)}
                                 />
                                 <button
                                   type="button"
-                                  title="Copy link"
-                                  aria-label={`Copy link for ${resource.title}`}
+                                  title="Sao chép liên kết"
+                                  aria-label={`Sao chép liên kết của ${resource.title}`}
                                   onClick={(event) => { event.stopPropagation(); void handleCopyLink(resource) }}
                                   className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                 >
@@ -582,8 +582,8 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                               </div>
                             </td>
                             <td className="px-2">
-                              <Badge variant="outline" className="max-w-full whitespace-nowrap px-1.5 text-[10px]" title={resource.resource_type}>
-                                <span className="truncate">{resource.resource_type}</span>
+                              <Badge variant="outline" className="max-w-full whitespace-nowrap px-1.5 text-[10px]" title={resourceTypeLabel(resource.resource_type)}>
+                                <span className="truncate">{resourceTypeLabel(resource.resource_type)}</span>
                               </Badge>
                             </td>
                             <td className="hidden px-3 [@container(min-width:52rem)]:table-cell">
@@ -604,8 +604,8 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                               <div className="flex items-center justify-end gap-0.5">
                                 <button
                                   type="button"
-                                  title={resource.is_pinned ? "Unpin" : "Pin to top"}
-                                  aria-label={resource.is_pinned ? "Unpin" : "Pin to top"}
+                                  title={resource.is_pinned ? "Bỏ ghim" : "Ghim lên đầu"}
+                                  aria-label={resource.is_pinned ? "Bỏ ghim" : "Ghim lên đầu"}
                                   disabled={pinningResourceIds.has(resource.id)}
                                   onClick={(event) => { event.stopPropagation(); void handleTogglePin(resource) }}
                                   className={`flex h-8 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-50 ${resource.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
@@ -616,14 +616,14 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                 </button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <button type="button" aria-label={`Actions for ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                    <button type="button" aria-label={`Thao tác cho ${resource.title}`} onClick={(event) => event.stopPropagation()} className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                                       <MoreHorizontal className="h-4 w-4" />
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-                                    <DropdownMenuItem onClick={() => setDetailResource(resource)}>View details</DropdownMenuItem>
-                                    {resource.can_manage && <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>}
-                                    {resource.can_manage && <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>}
+                                    <DropdownMenuItem onClick={() => setDetailResource(resource)}>Xem chi tiết</DropdownMenuItem>
+                                    {resource.can_manage && <DropdownMenuItem onClick={() => openEditForm(resource)} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Sửa</DropdownMenuItem>}
+                                    {resource.can_manage && <DropdownMenuItem onClick={() => { setDeleteError(null); setDeleteResource(resource) }} className="gap-2 text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /> Xoá</DropdownMenuItem>}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -640,11 +640,11 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
         )}
 
         {pages > 1 && !loadError && (
-          <nav aria-label="Resource pagination" className="mt-6 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-[11px] text-muted-foreground">Page {page} of {pages}</span>
+          <nav aria-label="Phân trang Resource" className="mt-6 flex items-center justify-between border-t border-border pt-4">
+            <span className="text-[11px] text-muted-foreground">Trang {page} / {pages}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1 || isLoading} className="gap-1"><ChevronLeft className="h-3.5 w-3.5" /> Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pages, value + 1))} disabled={page >= pages || isLoading} className="gap-1">Next <ChevronRight className="h-3.5 w-3.5" /></Button>
+              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1 || isLoading} className="gap-1"><ChevronLeft className="h-3.5 w-3.5" /> Trước</Button>
+              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pages, value + 1))} disabled={page >= pages || isLoading} className="gap-1">Sau <ChevronRight className="h-3.5 w-3.5" /></Button>
             </div>
           </nav>
         )}
@@ -671,17 +671,17 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
       <Dialog open={Boolean(deleteResource)} onOpenChange={(nextOpen) => !nextOpen && !isDeleting && setDeleteResource(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete “{deleteResource?.title}”?</DialogTitle>
+            <DialogTitle>Xoá “{deleteResource?.title}”?</DialogTitle>
             <DialogDescription>
-              This removes only this resource record. It will not delete the project or the external document.
+              Thao tác này chỉ xoá bản ghi Resource. Dự án và tài liệu bên ngoài sẽ không bị xoá.
             </DialogDescription>
           </DialogHeader>
           {deleteError && <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">{deleteError}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteResource(null)} disabled={isDeleting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteResource(null)} disabled={isDeleting}>Huỷ</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="gap-1.5">
               {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              {isDeleting ? "Deleting..." : "Delete Resource"}
+              {isDeleting ? "Đang xoá..." : "Xoá Resource"}
             </Button>
           </DialogFooter>
         </DialogContent>

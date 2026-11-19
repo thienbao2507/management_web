@@ -33,7 +33,7 @@ export function useProjectWorkspace(projectId: string | undefined, identityId: s
       if (controller.signal.aborted || current.current !== token) return
       setState((previous) => previous.token === token ? { ...previous, ...update } : previous)
     }
-    const errorText = (failure: unknown) => failure instanceof Error ? failure.message : "Could not load project data"
+    const errorText = (failure: unknown) => failure instanceof Error ? failure.message : "Không tải được dữ liệu dự án"
     void api.getTasks(projectId, undefined, controller.signal, !["all", "unsprinted"].includes(sprintFilter) ? sprintFilter : undefined, sprintFilter === "unsprinted").then((tasks) => {
       if (controller.signal.aborted || current.current !== token) return
       ingestUsers(tasks.flatMap((task) => task.assignee ? [task.assignee] : []))

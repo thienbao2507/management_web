@@ -78,7 +78,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } else {
         setCurrentUser(null)
         setUsers({})
-        setError(failure instanceof Error ? failure.message : "Could not restore your session.")
+        setError(failure instanceof Error ? failure.message : "Không khôi phục được phiên đăng nhập.")
       }
     } finally {
       if (requestId === sequence.current) setLoading(false)
@@ -121,7 +121,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [clearIdentity])
 
   const saveProfile = useCallback(async (payload: Omit<UserPayload, "email">) => {
-    if (!currentUser) throw new Error("Authentication required")
+    if (!currentUser) throw new Error("Cần đăng nhập")
     const user = await api.updateUser(currentUser.id, payload)
     setCurrentUser(user)
     ingestUsers([user])

@@ -9,11 +9,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog"
-import { api, type MyFeedback } from "@/services/api"
+import { api, type FeedbackCategory, type MyFeedback } from "@/services/api"
 
 
 interface FeedbackThankYouProps {
   currentUserId: string
+}
+
+const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
+  bug: "Lỗi",
+  feature: "Tính năng",
+  other: "Khác",
 }
 
 function summarize(content: string): string {
@@ -55,19 +61,19 @@ export const FeedbackThankYou: React.FC<FeedbackThankYouProps> = ({ currentUserI
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Thank you for your feedback! 🎉</DialogTitle>
-          <DialogDescription>We've completed what you suggested:</DialogDescription>
+          <DialogTitle>Cảm ơn bạn đã góp ý! 🎉</DialogTitle>
+          <DialogDescription>Chúng tôi đã hoàn thành những gì bạn đề xuất:</DialogDescription>
         </DialogHeader>
         <ul className="space-y-2">
           {items.map((item) => (
             <li key={item.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs leading-relaxed">
-              <span className="mr-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">{item.category}</span>
+              <span className="mr-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">{CATEGORY_LABELS[item.category]}</span>
               {summarize(item.content)}
             </li>
           ))}
         </ul>
         <DialogFooter>
-          <Button type="button" onClick={acknowledgeAndClose}>Got it</Button>
+          <Button type="button" onClick={acknowledgeAndClose}>Đã hiểu</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

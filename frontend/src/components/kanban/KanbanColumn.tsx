@@ -44,7 +44,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
             variant="ghost"
             size="iconSm"
             onClick={() => onQuickAdd?.(id)}
-            title="Quick add task to this column"
+            title="Thêm nhanh công việc vào cột này"
             className="text-muted-foreground hover:text-foreground"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -52,7 +52,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
           <Button
             variant="ghost"
             size="iconSm"
-            title="Column options"
+            title="Tuỳ chọn cột"
             className="text-muted-foreground hover:text-foreground"
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
@@ -89,8 +89,8 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
             {tasks.length === 0 && !snapshot.isDraggingOver && (
               <EmptyState
-                title="No tasks in this column"
-                description="Drag a task here or click + Add Task."
+                title="Cột chưa có công việc"
+                description="Kéo công việc vào đây hoặc bấm + Thêm công việc."
                 className="my-auto py-8"
               />
             )}
@@ -106,7 +106,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
           className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border/80 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:bg-card hover:text-foreground transition-all"
         >
           <Plus className="h-3.5 w-3.5" />
-          <span>Add Task</span>
+          <span>Thêm công việc</span>
         </button>
       </div>
     </div>

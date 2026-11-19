@@ -26,7 +26,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
       <button
         type="button"
         onClick={() => setTheme(nextTheme[theme])}
-        title={`Theme: ${theme}. Click to change.`}
+        title={`Giao diện: ${{ light: "Sáng", dark: "Tối", system: "Hệ thống" }[theme]}. Bấm để đổi.`}
         className={cn(
           "inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-surface/50 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors",
           className
@@ -58,7 +58,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
         )}
       >
         <Sun className={cn("h-3.5 w-3.5", theme === "light" && "text-amber-500")} />
-        <span className="hidden sm:inline">Light</span>
+        <span className="hidden sm:inline">Sáng</span>
       </button>
 
       <button
@@ -72,7 +72,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
         )}
       >
         <Moon className={cn("h-3.5 w-3.5", theme === "dark" && "text-blue-400")} />
-        <span className="hidden sm:inline">Dark</span>
+        <span className="hidden sm:inline">Tối</span>
       </button>
 
       <button
@@ -86,7 +86,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
         )}
       >
         <Monitor className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">System</span>
+        <span className="hidden sm:inline">Hệ thống</span>
       </button>
     </div>
   )

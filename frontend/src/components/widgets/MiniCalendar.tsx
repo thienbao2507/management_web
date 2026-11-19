@@ -22,8 +22,8 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ]
 
   const prevMonth = () => {
@@ -34,7 +34,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
     setCurrentDate(new Date(year, month + 1, 1))
   }
 
-  const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+  const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
 
   const days = []
   // Padding for first day
@@ -83,6 +83,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
           <button
             type="button"
             onClick={prevMonth}
+            aria-label="Tháng trước"
             className="flex h-6 w-6 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -90,6 +91,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
           <button
             type="button"
             onClick={nextMonth}
+            aria-label="Tháng sau"
             className="flex h-6 w-6 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronRight className="h-3.5 w-3.5" />

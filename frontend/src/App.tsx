@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/Button"
 import { api, type ApiProject, type ApiTask } from "@/services/api"
 import { X, Sparkles, FolderPlus, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 
+const SPRINT_STATUS_LABELS: Record<string, string> = { planned: "Dự kiến", active: "Đang chạy", completed: "Hoàn thành" }
+
 const viewPaths: Record<SecondaryNavKey, string> = {
   dashboard: "/dashboard", roadmap: "/roadmap", active_sprint: "/active-sprint",
   resources: "/resources", whiteboard: "/whiteboard", issues: "/issues", releases: "/releases",
@@ -74,7 +76,7 @@ export function AppContent() {
   const [isSecondaryCollapsed, setIsSecondaryCollapsed] = useState(false)
   const [isRightCollapsed, setIsRightCollapsed] = useState(false)
 
-  // Neon Data states
+  // Data states
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null)
   const [sprintScope, setSprintScope] = useState<{ projectId?: string; parentScopeKey?: string; value: string }>({ value: "all" })
@@ -139,7 +141,7 @@ export function AppContent() {
       else localStorage.removeItem(projectPreferenceKey)
     } catch (err: any) {
       if (controller.signal.aborted || projectRequest.current !== requestId) return
-      setApiError(err.message || "Failed to connect to Neon PostgreSQL backend")
+      setApiError(err.message || "Không kết nối được máy chủ. Vui lòng thử lại sau.")
     } finally {
       if (!controller.signal.aborted && projectRequest.current === requestId) setIsLoadingProjects(false)
     }
@@ -268,7 +270,7 @@ export function AppContent() {
       if (!workspace.isCurrent(workspace.token)) return
       // Rollback on error
       setTasks(() => previousTasks)
-      setApiError(`Drag & drop failed: ${err.message}. Changes rolled back.`)
+      setApiError(`Kéo thả thất bại: ${err.message}. Đã hoàn tác thay đổi.`)
       setTimeout(() => { if (workspace.isCurrent(workspace.token)) setApiError(null) }, 4000)
     }
   }
@@ -307,7 +309,7 @@ export function AppContent() {
           <div className="relative flex h-full z-10">
             <div className="w-64 bg-card h-full flex flex-col border-r border-border">
               <div className="flex items-center justify-between p-3 border-b border-border">
-                <span className="text-xs font-bold">Workspace Navigation</span>
+                <span className="text-xs font-bold">Điều hướng Workspace</span>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -380,11 +382,11 @@ export function AppContent() {
           membersLoading={membersLoading}
           membersError={membersError}
           onMembersClick={() => navigateView("team")}
-          sprintLabel={renderedSecondaryNav === "team" ? "Team Members" : sprintFilter === "all" ? "All tasks" : sprintFilter === "unsprinted" ? "Unsprinted / Backlog" : sprints.find((sprint) => sprint.id === sprintFilter)?.name || "Sprint"}
+          sprintLabel={renderedSecondaryNav === "team" ? "Thành viên" : sprintFilter === "all" ? "Tất cả công việc" : sprintFilter === "unsprinted" ? "Chưa có Sprint / Backlog" : sprints.find((sprint) => sprint.id === sprintFilter)?.name || "Sprint"}
         />
 
         {/* Global Error Alert Banner */}
-        {identityError && <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground"><span>{identityError}</span><Button variant="outline" size="sm" onClick={() => void refreshIdentity()}>Retry</Button></div>}
+        {identityError && <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground"><span>{identityError}</span><Button variant="outline" size="sm" onClick={() => void refreshIdentity()}>Thử lại</Button></div>}
         {((!sharedMode && workspaceError) || apiError || workspace.tasksError) && (
           <div className="flex items-center justify-between bg-red-500/10 border-b border-red-500/30 px-4 py-2 text-xs text-red-600 dark:text-red-400">
             <div className="flex items-center gap-2">
@@ -396,7 +398,7 @@ export function AppContent() {
               onClick={() => !sharedMode && workspaceError ? void refreshWorkspace() : apiError || !selectedProject ? void loadProjects() : workspace.refresh()}
               className="flex items-center gap-1 font-semibold hover:underline"
             >
-              <RefreshCw className="h-3 w-3" /> Retry
+              <RefreshCw className="h-3 w-3" /> Thử lại
             </button>
           </div>
         )}
@@ -408,32 +410,32 @@ export function AppContent() {
           {identityLoading ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span>Restoring your session...</span>
+              <span>Đang khôi phục phiên đăng nhập...</span>
             </div>
           ) : !currentUser ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <h2 className="text-base font-bold">Sign in to Management Web</h2>
-              <p className="max-w-sm text-xs text-muted-foreground">Use your verified account to access your personal Workspace and Projects shared with you.</p>
-              <div className="flex gap-2"><Button onClick={() => openIdentity("login")}>Sign in</Button><Button variant="outline" onClick={() => openIdentity("register")}>Register</Button></div>
+              <h2 className="text-base font-bold">Đăng nhập vào Management Web</h2>
+              <p className="max-w-sm text-xs text-muted-foreground">Dùng tài khoản đã xác minh để truy cập Workspace cá nhân và các dự án được chia sẻ với bạn.</p>
+              <div className="flex gap-2"><Button onClick={() => openIdentity("login")}>Đăng nhập</Button><Button variant="outline" onClick={() => openIdentity("register")}>Đăng ký</Button></div>
             </div>
           ) : isAdminView ? (
             <AdminUsersPage currentUserId={currentUser.id} />
           ) : workspaceLoading && !sharedMode ? (
-            <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Loading personal Workspace...</span></div>
+            <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Đang tải Workspace cá nhân...</span></div>
           ) : workspaceError && !sharedMode ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <h2 className="text-base font-bold">Workspace unavailable</h2>
+              <h2 className="text-base font-bold">Workspace không khả dụng</h2>
               <p className="max-w-md text-xs text-muted-foreground">{workspaceError}</p>
-              <div className="flex gap-2"><Button variant="outline" onClick={() => void refreshWorkspace()}>Retry</Button><Button variant="outline" onClick={() => setSharedMode(true)}>View shared Projects</Button></div>
+              <div className="flex gap-2"><Button variant="outline" onClick={() => void refreshWorkspace()}>Thử lại</Button><Button variant="outline" onClick={() => setSharedMode(true)}>Xem dự án được chia sẻ</Button></div>
             </div>
           ) : !currentWorkspace && !sharedMode ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <h2 className="text-base font-bold">No personal Workspace yet</h2>
-              <p className="max-w-sm text-xs text-muted-foreground">Create a personal Workspace for {currentUser.display_name}, or open a Project shared with your account.</p>
-              <div className="flex gap-2"><Button onClick={() => setIsCreateWorkspaceModalOpen(true)}>Create Workspace</Button><Button variant="outline" onClick={() => setSharedMode(true)}>View shared Projects</Button></div>
+              <h2 className="text-base font-bold">Chưa có Workspace cá nhân</h2>
+              <p className="max-w-sm text-xs text-muted-foreground">Hãy tạo Workspace cá nhân cho {currentUser.display_name}, hoặc mở một dự án được chia sẻ với tài khoản của bạn.</p>
+              <div className="flex gap-2"><Button onClick={() => setIsCreateWorkspaceModalOpen(true)}>Tạo Workspace</Button><Button variant="outline" onClick={() => setSharedMode(true)}>Xem dự án được chia sẻ</Button></div>
             </div>
           ) : isLoadingProjects ? (
-            <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Loading scoped Projects...</span></div>
+            <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /><span>Đang tải dự án...</span></div>
           ) : apiError && projects.length === 0 ? null : isResourcesView ? (
             <ResourcePage
               workspaceId={sharedMode ? undefined : currentWorkspace?.id}
@@ -453,17 +455,17 @@ export function AppContent() {
                 <FolderPlus className="h-7 w-7" />
               </div>
               <h2 className="text-base font-bold text-foreground">
-                {sharedMode ? "No shared Projects" : "No Projects in this Workspace"}
+                {sharedMode ? "Chưa có dự án được chia sẻ" : "Workspace chưa có dự án"}
               </h2>
               <p className="mt-2 text-xs text-muted-foreground max-w-sm leading-relaxed">
-                {sharedMode ? "No Projects have been shared with your verified account." : "Create the first Project inside this Workspace to start managing tasks."}
+                {sharedMode ? "Chưa có dự án nào được chia sẻ với tài khoản đã xác minh của bạn." : "Hãy tạo dự án đầu tiên trong Workspace này để bắt đầu quản lý công việc."}
               </p>
               <Button
                 onClick={() => sharedMode ? setSharedMode(false) : setIsCreateProjectModalOpen(true)}
                 className="mt-4 gap-2 font-semibold shadow"
               >
                 <FolderPlus className="h-4 w-4" />
-                <span>{sharedMode ? "Back to Workspace" : "Create First Project"}</span>
+                <span>{sharedMode ? "Về Workspace" : "Tạo dự án đầu tiên"}</span>
               </Button>
             </div>
           ) : renderedSecondaryNav === "team" && selectedProject ? (
@@ -472,18 +474,18 @@ export function AppContent() {
             isLoadingTasks ? (
               <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span>Loading active sprint tasks from Neon...</span>
+                <span>Đang tải công việc của Sprint hiện tại...</span>
               </div>
-            ) : workspace.tasksError ? <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-xs text-muted-foreground"><p>Tasks could not be loaded. Use Retry above.</p>{sprintFilter !== "all" && <Button variant="outline" onClick={() => setSprintScope({ projectId: selectedProject?.id, parentScopeKey, value: "all" })}>Show all project tasks</Button>}</div> : (
+            ) : workspace.tasksError ? <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-xs text-muted-foreground"><p>Không tải được công việc. Hãy bấm Thử lại ở phía trên.</p>{sprintFilter !== "all" && <Button variant="outline" onClick={() => setSprintScope({ projectId: selectedProject?.id, parentScopeKey, value: "all" })}>Hiện tất cả công việc của dự án</Button>}</div> : (
               <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 text-xs">
                   <label htmlFor="workspace-sprint" className="font-medium">Sprint</label>
                   <select id="workspace-sprint" value={sprintFilter} onChange={(event) => { setSelectedTask(null); setIsCreateTaskModalOpen(false); setSprintScope({ projectId: selectedProject?.id, parentScopeKey, value: event.target.value }) }} className="h-8 max-w-full rounded-md border border-border bg-background px-2 text-xs" disabled={workspace.sprintsLoading || Boolean(sprintsError)}>
-                    <option value="all">All project tasks (includes unsprinted)</option>
-                    <option value="unsprinted">Unsprinted / Backlog</option>
-                    {sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name} ({sprint.status})</option>)}
+                    <option value="all">Tất cả công việc của dự án (gồm chưa có Sprint)</option>
+                    <option value="unsprinted">Chưa có Sprint / Backlog</option>
+                    {sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name} ({SPRINT_STATUS_LABELS[sprint.status] ?? sprint.status})</option>)}
                   </select>
-                  {sprintsError ? <span role="alert" className="text-red-600 dark:text-red-400">{sprintsError}</span> : sprints.filter((sprint) => sprint.status === "active").length > 1 ? <span className="text-muted-foreground">Multiple active sprints. Choose one explicitly, or keep all tasks visible.</span> : <span className="text-muted-foreground">Legacy tasks remain visible in All project tasks.</span>}
+                  {sprintsError ? <span role="alert" className="text-red-600 dark:text-red-400">{sprintsError}</span> : sprints.filter((sprint) => sprint.status === "active").length > 1 ? <span className="text-muted-foreground">Có nhiều Sprint đang chạy. Hãy chọn một Sprint cụ thể, hoặc giữ hiển thị tất cả công việc.</span> : <span className="text-muted-foreground">Công việc cũ vẫn hiển thị trong mục Tất cả công việc của dự án.</span>}
                 </div>
                 <KanbanBoard
                 key={workspace.token.key}
@@ -502,16 +504,16 @@ export function AppContent() {
                 <Sparkles className="h-7 w-7" />
               </div>
               <h2 className="text-base font-bold text-foreground">
-                {renderedSecondaryNav.replace("_", " ").toUpperCase()} VIEW
+                Chế độ xem đang được phát triển
               </h2>
               <p className="mt-2 text-xs text-muted-foreground max-w-md leading-relaxed">
-                Active Sprint Kanban is connected directly to Neon PostgreSQL. Additional analytical views will be activated in subsequent phases.
+                Kanban của Sprint hiện tại đã sẵn sàng. Các chế độ xem khác sẽ được bổ sung ở các giai đoạn sau.
               </p>
               <Button
                 onClick={() => navigateView("active_sprint")}
                 className="mt-4"
               >
-                Back to Active Sprint Kanban
+                Về Kanban Sprint hiện tại
               </Button>
             </div>
           )}

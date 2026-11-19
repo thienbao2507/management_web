@@ -1,26 +1,16 @@
 import React from "react"
 import {
-  Bell,
   Plus,
   UserPlus,
   PanelLeft,
   PanelRight,
   Menu,
-  Database,
 } from "lucide-react"
 import { SearchInput } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { useUsers } from "@/context/UserContext"
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu"
 import { type ApiProject, type ApiMember, type ApiWorkspace } from "@/services/api"
 
 interface HeaderProps {
@@ -72,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onToggleMobileMenu}
-          aria-label="Open workspace navigation"
+          aria-label="Mở thanh điều hướng"
           className="md:hidden flex h-8 w-8 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:bg-muted"
         >
           <Menu className="h-4 w-4" />
@@ -82,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onToggleSecondarySidebar}
-          title={isSecondaryCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={isSecondaryCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
           className="hidden md:flex h-8 w-8 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <PanelLeft className="h-4 w-4" />
@@ -91,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Workspace hierarchy breadcrumb */}
         <div className="flex items-center gap-1.5 truncate">
           <span className="text-xs font-bold text-foreground truncate">
-            {legacyMode ? "Shared with me" : currentWorkspace?.name || "No Workspace"}
+            {legacyMode ? "Được chia sẻ với tôi" : currentWorkspace?.name || "Chưa có Workspace"}
           </span>
           {currentProject && (
             <>
@@ -105,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
             <>
               <span className="text-muted-foreground text-xs">/</span>
               <span className="hidden sm:inline-block rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary font-mono truncate">
-                {isResourcesView ? "Resources" : `${currentProject?.key || "Project"} • ${sprintLabel}`}
+                {isResourcesView ? "Resources" : `${currentProject?.key || "Dự án"} • ${sprintLabel}`}
               </span>
             </>
           )}
@@ -118,19 +108,13 @@ export const Header: React.FC<HeaderProps> = ({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           onClear={() => onSearchChange("")}
-          placeholder={isResourcesView ? "Search all resources..." : "Search Neon tasks..."}
-          aria-label={isResourcesView ? "Search all resources" : "Search tasks"}
+          placeholder={isResourcesView ? "Tìm tất cả Resources..." : "Tìm công việc..."}
+          aria-label={isResourcesView ? "Tìm tất cả Resources" : "Tìm công việc"}
         />
       </div>
 
-      {/* Right: Team Avatars, Create Task, Theme Switcher, Notifications, Profile */}
+      {/* Right: Team Avatars, Create Task, Theme Switcher */}
       <div className="flex items-center gap-2 sm:gap-2.5">
-        {/* Neon Status Indicator */}
-        <div className="hidden xl:flex shrink-0 whitespace-nowrap items-center gap-1.5 text-[11px] font-mono text-muted-foreground bg-muted/50 border border-border/60 px-2 py-1 rounded-md">
-          <Database className="h-3 w-3 text-emerald-500" />
-          <span>Neon PG</span>
-        </div>
-
         {/* Team Avatars cluster */}
         <div className={`${isResourcesView ? "hidden" : "hidden lg:flex"} items-center -space-x-1.5 mr-1`}>
           {members.slice(0, 4).map((member) => (
@@ -139,13 +123,13 @@ export const Header: React.FC<HeaderProps> = ({
               user={usersById[member.user_id]}
               size="sm"
               className="ring-2 ring-card"
-              title={usersById[member.user_id]?.display_name || "User unavailable"}
+              title={usersById[member.user_id]?.display_name || "Người dùng không khả dụng"}
             />
           ))}
           <button
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground text-[10px] font-medium"
-            title={membersLoading ? "Loading members" : membersError || "Manage project members"}
+            title={membersLoading ? "Đang tải thành viên" : membersError || "Quản lý thành viên dự án"}
             onClick={onMembersClick}
           >
             <UserPlus className="h-3 w-3" />
@@ -156,48 +140,23 @@ export const Header: React.FC<HeaderProps> = ({
         <Button
           size="sm"
           onClick={isResourcesView ? onCreateResourceClick : onCreateTaskClick}
-          aria-label={isResourcesView ? "Add Resource" : "Create Task"}
+          aria-label={isResourcesView ? "Thêm Resource" : "Tạo công việc"}
           disabled={createTaskDisabled}
           className="gap-1 font-semibold shadow-xs"
         >
           <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-          <span className="hidden sm:inline">{isResourcesView ? "Add Resource" : "Create Task"}</span>
+          <span className="hidden sm:inline">{isResourcesView ? "Thêm Resource" : "Tạo công việc"}</span>
         </Button>
 
         {/* Theme Switcher */}
         <ThemeSwitcher variant="pills" className="hidden sm:inline-flex" />
         <ThemeSwitcher variant="icon" className="sm:hidden" />
 
-        {/* Notification Bell */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="relative flex h-8 w-8 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>PostgreSQL API status</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-2">
-              <span className="font-semibold text-[11px] text-foreground">
-                Application database connection
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                Environment details are intentionally not exposed in the UI.
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         {/* Toggle Right Sidebar button (Desktop) */}
         <button
           type="button"
           onClick={onToggleRightSidebar}
-          title={isRightCollapsed ? "Expand right panel" : "Collapse right panel"}
+          title={isRightCollapsed ? "Mở rộng panel phải" : "Thu gọn panel phải"}
           className={`${isResourcesView ? "hidden" : "hidden md:flex"} h-8 w-8 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors`}
         >
           <PanelRight className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from "react"
-import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
   Dialog,
@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const WhiteboardCanvas = lazy(() => import("./WhiteboardCanvas"))
+const LIST_COLLAPSED_KEY = "whiteboard:list-collapsed"
 
 interface WhiteboardPageProps {
   project: ApiProject | null
@@ -55,7 +56,7 @@ function formatUpdatedAt(value: string): string {
   const timestamp = new Date(value).getTime()
   if (!Number.isFinite(timestamp)) return value
   const seconds = Math.round((timestamp - Date.now()) / 1000)
-  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" })
+  const formatter = new Intl.RelativeTimeFormat("vi-VN", { numeric: "auto" })
   if (Math.abs(seconds) < 60) return formatter.format(seconds, "second")
   const minutes = Math.round(seconds / 60)
   if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute")
@@ -63,7 +64,7 @@ function formatUpdatedAt(value: string): string {
   if (Math.abs(hours) < 24) return formatter.format(hours, "hour")
   const days = Math.round(hours / 24)
   if (Math.abs(days) < 30) return formatter.format(days, "day")
-  return new Date(value).toLocaleDateString()
+  return new Date(value).toLocaleDateString("vi-VN")
 }
 
 function sortBoards(items: ApiWhiteboardSummary[]): ApiWhiteboardSummary[] {
@@ -86,6 +87,16 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
   const [renameTitle, setRenameTitle] = useState("")
   const [deleteBoard, setDeleteBoard] = useState<ApiWhiteboardSummary | null>(null)
   const [canvasRevision, setCanvasRevision] = useState(0)
+  const [listCollapsed, setListCollapsed] = useState(() => {
+    try { return localStorage.getItem(LIST_COLLAPSED_KEY) === "1" } catch { return false }
+  })
+  const toggleListCollapsed = () => {
+    setListCollapsed((value) => {
+      const next = !value
+      try { localStorage.setItem(LIST_COLLAPSED_KEY, next ? "1" : "0") } catch { /* storage unavailable */ }
+      return next
+    })
+  }
 
   const chooseBoard = useCallback((boardId: string | null) => {
     if (boardId !== selectedId) {
@@ -115,7 +126,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return
-        setError(requestError instanceof Error ? requestError.message : "Could not load whiteboards")
+        setError(requestError instanceof Error ? requestError.message : "Không thể tải danh sách whiteboard")
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingList(false)
@@ -132,7 +143,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return
-        setError(requestError instanceof Error ? requestError.message : "Could not load this whiteboard")
+        setError(requestError instanceof Error ? requestError.message : "Không thể tải whiteboard này")
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingBoard(false)
@@ -145,12 +156,12 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
     setCreating(true)
     setError(null)
     try {
-      const created = await api.createWhiteboard(project.id, "Untitled whiteboard")
+      const created = await api.createWhiteboard(project.id, "Whiteboard chưa đặt tên")
       setBoards((current) => sortBoards([created, ...current.filter((board) => board.id !== created.id)]))
       setSelectedBoard(created)
       chooseBoard(created.id)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not create a whiteboard")
+      setError(requestError instanceof Error ? requestError.message : "Không thể tạo whiteboard")
     } finally {
       setCreating(false)
     }
@@ -167,7 +178,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       setSelectedBoard((current) => current?.id === updated.id ? { ...current, ...updated } : current)
       setRenameBoard(null)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not rename the whiteboard")
+      setError(requestError instanceof Error ? requestError.message : "Không thể đổi tên whiteboard")
     } finally {
       setActionPending(false)
     }
@@ -188,7 +199,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       }
       setDeleteBoard(null)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not delete the whiteboard")
+      setError(requestError instanceof Error ? requestError.message : "Không thể xoá whiteboard")
     } finally {
       setActionPending(false)
     }
@@ -214,43 +225,76 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
   if (!project) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-        Select a project to use whiteboards
+        Chọn một dự án để dùng whiteboard
       </div>
     )
   }
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 bg-background">
+      {listCollapsed ? (
+      <aside className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-border bg-card/40 py-3">
+        <Button
+          variant="ghost"
+          size="iconSm"
+          onClick={toggleListCollapsed}
+          aria-label="Hiện danh sách whiteboard"
+          title="Hiện danh sách whiteboard"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          size="iconSm"
+          onClick={() => void createBoard()}
+          disabled={creating}
+          aria-label="Whiteboard mới"
+          title="Whiteboard mới"
+        >
+          {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+        </Button>
+      </aside>
+      ) : (
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-card/40">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3">
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold">Whiteboards</h2>
             <p className="truncate text-[10px] text-muted-foreground">{project.name}</p>
           </div>
-          <Button
-            size="iconSm"
-            onClick={() => void createBoard()}
-            disabled={creating}
-            aria-label="New whiteboard"
-            title="New whiteboard"
-          >
-            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              size="iconSm"
+              onClick={() => void createBoard()}
+              disabled={creating}
+              aria-label="Whiteboard mới"
+              title="Whiteboard mới"
+            >
+              {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="iconSm"
+              onClick={toggleListCollapsed}
+              aria-label="Ẩn danh sách whiteboard"
+              title="Ẩn danh sách whiteboard"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        {error && <p role="alert" className="border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">{error}</p>}
+        {error &&<p role="alert" className="border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {loadingList ? (
             <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading whiteboards…
+              <Loader2 className="h-4 w-4 animate-spin" /> Đang tải whiteboard…
             </div>
           ) : boards.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-3 py-10 text-center">
-              <p className="text-xs font-medium">No whiteboards yet</p>
-              <p className="text-[11px] text-muted-foreground">Create a board to sketch ideas with your project team.</p>
+              <p className="text-xs font-medium">Chưa có whiteboard nào</p>
+              <p className="text-[11px] text-muted-foreground">Tạo một bảng để phác thảo ý tưởng cùng nhóm dự án.</p>
               <Button size="sm" onClick={() => void createBoard()} disabled={creating}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Create whiteboard
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Tạo whiteboard
               </Button>
             </div>
           ) : (
@@ -270,7 +314,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
                   >
                     <span className="block truncate text-xs font-medium">{board.title}</span>
                     <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">
-                      Updated {formatUpdatedAt(board.updated_at)} by {board.updated_by_name || "Unknown"}
+                      Cập nhật {formatUpdatedAt(board.updated_at)} bởi {board.updated_by_name || "Không rõ"}
                     </span>
                   </button>
                   <DropdownMenu>
@@ -279,7 +323,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
                         variant="ghost"
                         size="iconSm"
                         className="mt-1 mr-1 shrink-0"
-                        aria-label={`More actions for ${board.title}`}
+                        aria-label={`Thêm thao tác cho ${board.title}`}
                       >
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </Button>
@@ -289,10 +333,10 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
                         setRenameBoard(board)
                         setRenameTitle(board.title)
                       }}>
-                        <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
+                        <Pencil className="mr-2 h-3.5 w-3.5" /> Đổi tên
                       </DropdownMenuItem>
                       <DropdownMenuItem className="text-red-600 focus:text-red-600" onSelect={() => setDeleteBoard(board)}>
-                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Xoá
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -302,16 +346,17 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
           )}
         </div>
       </aside>
+      )}
 
       <section className="relative flex min-h-[480px] min-w-0 flex-1 overflow-hidden">
         {loadingBoard || (selectedId && selectedBoard?.id !== selectedId) ? (
           <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loading canvas…
+            <Loader2 className="h-5 w-5 animate-spin" /> Đang tải bảng vẽ…
           </div>
         ) : selectedBoard ? (
           <Suspense fallback={
             <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading Excalidraw…
+              <Loader2 className="h-5 w-5 animate-spin" /> Đang tải Excalidraw…
             </div>
           }>
             <WhiteboardCanvas
@@ -323,7 +368,7 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
           </Suspense>
         ) : (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-            Create or select a whiteboard to start drawing
+            Tạo hoặc chọn một whiteboard để bắt đầu vẽ
           </div>
         )}
       </section>
@@ -331,11 +376,11 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       <Dialog open={Boolean(renameBoard)} onOpenChange={(open) => !open && !actionPending && setRenameBoard(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename whiteboard</DialogTitle>
-            <DialogDescription>Choose a clear name for this project whiteboard.</DialogDescription>
+            <DialogTitle>Đổi tên whiteboard</DialogTitle>
+            <DialogDescription>Chọn một tên rõ ràng cho whiteboard của dự án.</DialogDescription>
           </DialogHeader>
           <label className="space-y-1.5 text-xs font-medium">
-            <span>Whiteboard name</span>
+            <span>Tên whiteboard</span>
             <input
               autoFocus
               value={renameTitle}
@@ -348,9 +393,9 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
             />
           </label>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameBoard(null)} disabled={actionPending}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRenameBoard(null)} disabled={actionPending}>Huỷ</Button>
             <Button onClick={() => void submitRename()} disabled={actionPending || !renameTitle.trim()}>
-              {actionPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Rename
+              {actionPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Đổi tên
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -359,13 +404,13 @@ export const WhiteboardPage: React.FC<WhiteboardPageProps> = ({ project }) => {
       <Dialog open={Boolean(deleteBoard)} onOpenChange={(open) => !open && !actionPending && setDeleteBoard(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete “{deleteBoard?.title}”?</DialogTitle>
-            <DialogDescription>This permanently removes the whiteboard and its drawings.</DialogDescription>
+            <DialogTitle>Xoá “{deleteBoard?.title}”?</DialogTitle>
+            <DialogDescription>Thao tác này xoá vĩnh viễn whiteboard và các nét vẽ trong đó.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteBoard(null)} disabled={actionPending}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteBoard(null)} disabled={actionPending}>Huỷ</Button>
             <Button variant="destructive" onClick={() => void confirmDelete()} disabled={actionPending}>
-              {actionPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Delete
+              {actionPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Xoá
             </Button>
           </DialogFooter>
         </DialogContent>

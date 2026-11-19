@@ -25,11 +25,17 @@ const categoryClasses: Record<FeedbackCategory, string> = {
   other: "border-border bg-muted text-muted-foreground",
 }
 
+const categoryLabels: Record<FeedbackCategory, string> = {
+  bug: "Lỗi",
+  feature: "Tính năng",
+  other: "Khác",
+}
+
 const statusLabels: Record<FeedbackStatus, string> = {
-  new: "New",
-  in_progress: "In progress",
-  done: "Done",
-  rejected: "Rejected",
+  new: "Mới",
+  in_progress: "Đang xử lý",
+  done: "Hoàn thành",
+  rejected: "Từ chối",
 }
 
 interface MyFeedbackDialogProps {
@@ -39,7 +45,7 @@ interface MyFeedbackDialogProps {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("vi-VN", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -64,7 +70,7 @@ export const MyFeedbackDialog: React.FC<MyFeedbackDialogProps> = ({ open, onOpen
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return
       setItems([])
-      setError(reason instanceof Error ? reason.message : "Unable to load your feedback.")
+      setError(reason instanceof Error ? reason.message : "Không thể tải góp ý của bạn.")
     }).finally(() => {
       window.clearTimeout(loadingTimer)
       if (!controller.signal.aborted) setLoading(false)
@@ -80,28 +86,28 @@ export const MyFeedbackDialog: React.FC<MyFeedbackDialogProps> = ({ open, onOpen
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
         <div className="flex items-start justify-between gap-3 pr-8">
           <DialogHeader>
-            <DialogTitle>My feedback</DialogTitle>
-            <DialogDescription>Track the suggestions and reports you have sent.</DialogDescription>
+            <DialogTitle>Góp ý của tôi</DialogTitle>
+            <DialogDescription>Theo dõi các đề xuất và báo cáo bạn đã gửi.</DialogDescription>
           </DialogHeader>
           <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={onCreateNew}>
             <Plus className="h-3.5 w-3.5" />
-            New feedback
+            Góp ý mới
           </Button>
         </div>
 
         {error && (
           <div role="alert" className="flex items-center justify-between gap-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
             <span>{error}</span>
-            <Button type="button" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>Retry</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>Thử lại</Button>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading your feedback...</div>
+          <div className="flex items-center justify-center gap-2 py-12 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" /> Đang tải góp ý của bạn...</div>
         ) : !error && items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><MessageSquareText className="h-6 w-6" /></span>
-            <p className="text-xs text-muted-foreground">You haven't sent any feedback yet.</p>
+            <p className="text-xs text-muted-foreground">Bạn chưa gửi góp ý nào.</p>
           </div>
         ) : items.length > 0 ? (
           <div className="space-y-2">
@@ -109,7 +115,7 @@ export const MyFeedbackDialog: React.FC<MyFeedbackDialogProps> = ({ open, onOpen
               <article key={item.id} className="rounded-lg border border-border bg-muted/20 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${categoryClasses[item.category]}`}>{item.category}</span>
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${categoryClasses[item.category]}`}>{categoryLabels[item.category]}</span>
                     <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClasses[item.status]}`}>{statusLabels[item.status]}</span>
                   </div>
                   <time dateTime={item.created_at} className="text-[10px] text-muted-foreground">{formatDate(item.created_at)}</time>

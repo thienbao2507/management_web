@@ -23,6 +23,14 @@ interface RightSidebarProps {
   className?: string
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  todo: "Cần làm",
+  in_progress: "Đang làm",
+  review: "Đang review",
+  done: "Hoàn thành",
+  blocked: "Bị chặn",
+}
+
 export const RightSidebar: React.FC<RightSidebarProps> = ({
   tasks,
   loading, error,
@@ -62,16 +70,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           />
           <div>
             <h3 className="text-xs font-semibold text-foreground">
-              {currentUser?.display_name || "Not signed in"}
+              {currentUser?.display_name || "Chưa đăng nhập"}
             </h3>
-            <p className="text-[10px] text-muted-foreground">{currentUser?.job_title || "Authenticated profile"}</p>
+            <p className="text-[10px] text-muted-foreground">{currentUser?.job_title || "Hồ sơ đã xác thực"}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={onToggleCollapse}
-          title="Collapse right sidebar"
+          title="Thu gọn thanh bên phải"
           className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <ChevronRight className="h-4 w-4" />
@@ -80,12 +88,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
       {/* Content Scroll Container */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
-        {loading || error ? <p role={error ? "alert" : "status"} className="text-xs text-muted-foreground">{error || "Loading project tasks..."}</p> : <>
+        {loading || error ? <p role={error ? "alert" : "status"} className="text-xs text-muted-foreground">{error || "Đang tải công việc của dự án..."}</p> : <>
         {/* Widget 1: Interactive Mini Calendar */}
         <div>
           <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             <CalendarIcon className="h-3.5 w-3.5" />
-            <span>Schedule & Milestones</span>
+            <span>Lịch & Cột mốc</span>
           </div>
           <MiniCalendar taskDueDates={taskDates} />
         </div>
@@ -95,10 +103,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>Upcoming Deadlines</span>
+              <span>Hạn chót sắp tới</span>
             </div>
             <span className="text-[10px] font-semibold text-primary">
-              {upcomingTasks.length} tasks
+              {upcomingTasks.length} công việc
             </span>
           </div>
 
@@ -132,13 +140,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       />
                       <span><TaskAssigneeName task={t} /></span>
                     </span>
-                    <span className="capitalize">{t.status.replace("_", " ")}</span>
+                    <span>{STATUS_LABELS[t.status] ?? t.status.replace("_", " ")}</span>
                   </div>
                 </div>
               ))
             ) : (
               <div className="rounded-lg border border-dashed border-border/70 p-3 text-center text-xs text-muted-foreground">
-                No upcoming deadlines in this project.
+                Dự án chưa có hạn chót sắp tới.
               </div>
             )}
           </div>
@@ -149,7 +157,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           <div className="rounded-lg border border-rose-300/80 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/30 p-3 text-xs">
             <div className="flex items-center gap-1.5 font-semibold text-rose-800 dark:text-rose-300">
               <AlertTriangle className="h-4 w-4" />
-              <span>{blockedTasks.length} Blocked Task(s)</span>
+              <span>{blockedTasks.length} công việc bị chặn</span>
             </div>
             <div className="mt-1.5 space-y-1.5">
               {blockedTasks.slice(0, 2).map((bt) => (

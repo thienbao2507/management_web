@@ -7,7 +7,7 @@ import type { ApiTask } from "@/services/api"
 export function useTaskIdentity(task: ApiTask) {
   const { usersById } = useUsers()
   const user = task.assignee_id ? usersById[task.assignee_id] : null
-  return { user, name: user?.display_name || (task.assignee_id ? "User unavailable" : task.assignee_name || "Unassigned") }
+  return { user, name: user?.display_name || (task.assignee_id ? "Người dùng không khả dụng" : task.assignee_name || "Chưa giao") }
 }
 export function TaskAssigneeAvatar({ task, ...props }: { task: ApiTask } & Omit<AvatarProps, "src" | "fallback">) {
   const { user, name } = useTaskIdentity(task)

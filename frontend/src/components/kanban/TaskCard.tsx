@@ -11,6 +11,13 @@ interface TaskCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onCl
   isDragging?: boolean
 }
 
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Thấp",
+  medium: "Trung bình",
+  high: "Cao",
+  urgent: "Khẩn cấp",
+}
+
 export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
   ({ task, onClick, isDragging, className, ...props }, ref) => {
     const completedSubtasks = task.subtasks?.filter((st) => st.is_completed).length || 0
@@ -45,11 +52,11 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
             {task.is_blocked && (
               <Badge variant="blocked" className="h-4 px-1.5 text-[9px] gap-0.5">
                 <AlertCircle className="h-2.5 w-2.5" />
-                Blocked
+                Bị chặn
               </Badge>
             )}
             <Badge variant={task.priority} className="text-[10px] uppercase font-bold tracking-wider">
-              {task.priority}
+              {PRIORITY_LABELS[task.priority] ?? task.priority}
             </Badge>
           </div>
         </div>
@@ -89,7 +96,7 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-muted-foreground"
                 )}
-                title={`${completedSubtasks}/${totalSubtasks} checklist items completed`}
+                title={`${completedSubtasks}/${totalSubtasks} việc trong danh sách đã hoàn thành`}
               >
                 <CheckSquare className="h-3 w-3" />
                 <span>{completedSubtasks}/{totalSubtasks}</span>

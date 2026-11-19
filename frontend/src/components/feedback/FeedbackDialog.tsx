@@ -36,7 +36,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
     }
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl)
-      reject(new Error("Unable to read the pasted image."))
+      reject(new Error("Không thể đọc ảnh đã dán."))
     }
     image.src = objectUrl
   })
@@ -47,7 +47,7 @@ function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
     canvas.toBlob(
       (blob) => {
         if (blob) resolve(blob)
-        else reject(new Error("Unable to compress the pasted image."))
+        else reject(new Error("Không thể nén ảnh đã dán."))
       },
       "image/jpeg",
       quality
@@ -59,7 +59,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("Unable to prepare the pasted image."))
+    reader.onerror = () => reject(new Error("Không thể xử lý ảnh đã dán."))
     reader.readAsDataURL(blob)
   })
 }
@@ -72,7 +72,7 @@ async function compressImage(file: File): Promise<string> {
   canvas.height = Math.max(1, Math.round(source.height * scale))
 
   const context = canvas.getContext("2d")
-  if (!context) throw new Error("Image compression is unavailable in this browser.")
+  if (!context) throw new Error("Trình duyệt này không hỗ trợ nén ảnh.")
   context.fillStyle = "#ffffff"
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(source, 0, 0, canvas.width, canvas.height)
@@ -85,7 +85,7 @@ async function compressImage(file: File): Promise<string> {
     quality = Math.max(0.5, Number((quality - 0.05).toFixed(2)))
   }
 
-  throw new Error("The pasted image is still larger than 900 KB after compression.")
+  throw new Error("Ảnh đã dán vẫn lớn hơn 900 KB sau khi nén.")
 }
 
 export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
@@ -134,19 +134,19 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
 
     if (pending) return
     if (imageProcessingInFlight.current) {
-      setError("Please wait for the current screenshot to finish processing.")
+      setError("Vui lòng đợi ảnh chụp màn hình hiện tại xử lý xong.")
       return
     }
 
     const availableSlots = MAX_IMAGES - imagesRef.current.length
     if (availableSlots <= 0) {
-      setError("You can attach at most 3 screenshots.")
+      setError("Bạn chỉ có thể đính kèm tối đa 3 ảnh chụp màn hình.")
       return
     }
 
     const filesToProcess = imageFiles.slice(0, availableSlots)
     let pasteError = imageFiles.length > availableSlots
-      ? "You can attach at most 3 screenshots."
+      ? "Bạn chỉ có thể đính kèm tối đa 3 ảnh chụp màn hình."
       : null
 
     imageProcessingInFlight.current = true
@@ -160,7 +160,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         } catch (failure) {
           pasteError = failure instanceof Error
             ? failure.message
-            : "Unable to process the pasted image."
+            : "Không thể xử lý ảnh đã dán."
         }
       }
       setError(pasteError)
@@ -184,7 +184,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
       onOpenChange(false)
       onSubmitted()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to send feedback.")
+      setError(failure instanceof Error ? failure.message : "Không thể gửi góp ý.")
     } finally {
       submitInFlight.current = false
       setPending(false)
@@ -198,9 +198,9 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         onPaste={handlePaste}
       >
         <DialogHeader>
-          <DialogTitle>Send feedback</DialogTitle>
+          <DialogTitle>Gửi góp ý</DialogTitle>
           <DialogDescription>
-            Report a bug or request a feature. Paste screenshots with Ctrl+V.
+            Báo lỗi hoặc đề xuất tính năng. Dán ảnh chụp màn hình bằng Ctrl+V.
           </DialogDescription>
         </DialogHeader>
 
@@ -211,27 +211,27 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
             </div>
           )}
           <label className="block space-y-1.5 text-xs font-medium">
-            <span>Type</span>
+            <span>Loại</span>
             <select
-              aria-label="Feedback type"
+              aria-label="Loại góp ý"
               value={category}
               onChange={(event) => setCategory(event.target.value as FeedbackCategory)}
               className={selectClassName}
               disabled={pending}
             >
-              <option value="feature">Feature</option>
-              <option value="bug">Bug</option>
-              <option value="other">Other</option>
+              <option value="feature">Tính năng</option>
+              <option value="bug">Lỗi</option>
+              <option value="other">Khác</option>
             </select>
           </label>
 
           <label className="block space-y-1.5 text-xs font-medium">
-            <span>Feedback</span>
+            <span>Góp ý</span>
             <textarea
-              aria-label="Feedback content"
+              aria-label="Nội dung góp ý"
               value={content}
               onChange={(event) => setContent(event.target.value)}
-              placeholder="Tell us what happened or what you would like to see..."
+              placeholder="Cho chúng tôi biết điều gì đã xảy ra hoặc bạn muốn thấy điều gì..."
               maxLength={5000}
               rows={7}
               disabled={pending}
@@ -239,7 +239,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               className="flex w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
             <span className="flex justify-between text-[10px] font-normal text-muted-foreground">
-              <span>Paste up to 3 screenshots with Ctrl+V.</span>
+              <span>Dán tối đa 3 ảnh chụp màn hình bằng Ctrl+V.</span>
               <span>{content.length}/5000</span>
             </span>
           </label>
@@ -247,11 +247,11 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
           {(images.length > 0 || processingImages) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-medium">
-                <span>Screenshots ({images.length}/{MAX_IMAGES})</span>
+                <span>Ảnh chụp màn hình ({images.length}/{MAX_IMAGES})</span>
                 {processingImages && (
                   <span className="flex items-center gap-1 text-[10px] font-normal text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Compressing...
+                    Đang nén...
                   </span>
                 )}
               </div>
@@ -260,14 +260,14 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                   <div key={`${image.slice(-24)}-${index}`} className="relative overflow-hidden rounded-md border border-border bg-muted">
                     <img
                       src={image}
-                      alt={`Feedback screenshot ${index + 1}`}
+                      alt={`Ảnh chụp màn hình góp ý ${index + 1}`}
                       className="aspect-video h-full w-full object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => updateImages(imagesRef.current.filter((_, itemIndex) => itemIndex !== index))}
                       disabled={pending}
-                      aria-label={`Remove screenshot ${index + 1}`}
+                      aria-label={`Xoá ảnh chụp màn hình ${index + 1}`}
                       className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm hover:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <X className="h-3 w-3" />
@@ -285,15 +285,15 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               onClick={() => handleOpenChange(false)}
               disabled={pending}
             >
-              Cancel
+              Huỷ
             </Button>
             <Button type="submit" disabled={!content.trim() || pending || processingImages}>
               {pending ? (
                 <span className="flex items-center gap-1.5">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Sending...
+                  Đang gửi...
                 </span>
-              ) : "Send"}
+              ) : "Gửi"}
             </Button>
           </DialogFooter>
         </form>

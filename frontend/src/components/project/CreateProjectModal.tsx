@@ -53,7 +53,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       setDescription("")
       onClose()
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to create project on Neon")
+      setErrorMessage(err.message || "Không tạo được dự án")
     } finally {
       setIsLoading(false)
     }
@@ -63,9 +63,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>Tạo dự án mới</DialogTitle>
           <DialogDescription>
-            Create a Project inside the selected Workspace. Existing Projects are not moved.
+            Tạo dự án trong Workspace đã chọn. Các dự án hiện có sẽ không bị di chuyển.
           </DialogDescription>
         </DialogHeader>
 
@@ -82,7 +82,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           </div>
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Project Name <span className="text-red-500">*</span>
+              Tên dự án <span className="text-red-500">*</span>
             </label>
             <Input
               value={name}
@@ -99,7 +99,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   setKey(suggested)
                 }
               }}
-              placeholder="e.g., Mobile App Redesign"
+              placeholder="VD: Thiết kế lại ứng dụng di động"
               className="mt-1"
               required
               autoFocus
@@ -108,12 +108,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Key Prefix (e.g. MOB, PRJ)
+              Tiền tố mã (VD: MOB, PRJ)
             </label>
             <Input
               value={key}
               onChange={(e) => setKey(e.target.value.toUpperCase())}
-              placeholder="Auto-generated if blank"
+              placeholder="Tự động tạo nếu để trống"
               maxLength={6}
               className="mt-1 font-mono uppercase"
             />
@@ -121,39 +121,39 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Description
+              Mô tả
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Project goals and scope..."
+              placeholder="Mục tiêu và phạm vi dự án..."
               className="mt-1 flex w-full rounded-md border border-border bg-background p-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Priority
+              Độ ưu tiên
             </label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               className="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+              <option value="urgent">Khẩn cấp</option>
             </select>
           </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
-              Cancel
+              Huỷ
             </Button>
             <Button type="submit" size="sm" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Project"}
+              {isLoading ? "Đang tạo..." : "Tạo dự án"}
             </Button>
           </DialogFooter>
         </form>

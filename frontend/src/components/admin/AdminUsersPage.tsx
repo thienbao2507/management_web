@@ -16,7 +16,7 @@ interface AdminUsersPageProps {
 }
 
 function formatCreatedAt(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("vi-VN", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -25,13 +25,13 @@ function formatCreatedAt(value: string): string {
 
 function formatLastLogin(value: string): string {
   const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000))
-  if (elapsedSeconds < 60) return "Just now"
+  if (elapsedSeconds < 60) return "Vừa xong"
   const minutes = Math.floor(elapsedSeconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 60) return `${minutes} phút trước`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`
+  if (hours < 24) return `${hours} giờ trước`
   const days = Math.floor(hours / 24)
-  return `${days} day${days === 1 ? "" : "s"} ago`
+  return `${days} ngày trước`
 }
 
 export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId }) => {
@@ -97,7 +97,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
       if (sequence !== requestSequence.current) return
       setUsers([])
       setTotal(0)
-      setError(reason instanceof Error ? reason.message : "Unable to load users.")
+      setError(reason instanceof Error ? reason.message : "Không thể tải danh sách người dùng.")
     }).finally(() => {
       window.clearTimeout(loadingTimer)
       if (sequence === requestSequence.current) setLoading(false)
@@ -116,7 +116,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
       const updated = await api.updateAdminUser(user.id, payload)
       setUsers((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
     } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Unable to update this user.")
+      setError(reason instanceof Error ? reason.message : "Không thể cập nhật người dùng này.")
     } finally {
       setPendingUserIds((current) => {
         const next = new Set(current)
@@ -135,18 +135,18 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold tracking-tight">Admin</h1>
+              <h1 className="text-xl font-bold tracking-tight">Quản trị</h1>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {activeTab === "users"
-                ? "Review accounts, assign roles, and control account access."
-                : "Review user feedback, update its status, and keep private admin notes."}
+                ? "Xem tài khoản, phân quyền và kiểm soát quyền truy cập."
+                : "Xem góp ý của người dùng, cập nhật trạng thái và ghi chú nội bộ."}
             </p>
           </div>
           {activeTab === "users" && <div className="w-full sm:max-w-xs">
             <SearchInput
-              aria-label="Search users"
-              placeholder="Search name or email..."
+              aria-label="Tìm kiếm người dùng"
+              placeholder="Tìm theo tên hoặc email..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onClear={() => setSearch("")}
@@ -154,7 +154,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
           </div>}
         </div>
 
-        <div role="tablist" aria-label="Admin sections" className="mt-5 flex gap-1 border-b border-border">
+        <div role="tablist" aria-label="Các mục quản trị" className="mt-5 flex gap-1 border-b border-border">
           <button
             type="button"
             role="tab"
@@ -162,7 +162,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
             onClick={() => selectTab("users")}
             className={`flex items-center gap-2 border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            <Users className="h-3.5 w-3.5" /> Users
+            <Users className="h-3.5 w-3.5" /> Người dùng
           </button>
           <button
             type="button"
@@ -171,48 +171,48 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
             onClick={() => selectTab("feedback")}
             className={`flex items-center gap-2 border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${activeTab === "feedback" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            <MessageSquareText className="h-3.5 w-3.5" /> Feedback
-            <span aria-label={`${newFeedbackCount} new feedback`} className="min-w-5 rounded-full bg-primary/15 px-1.5 py-0.5 text-center text-[9px] font-bold text-primary">{newFeedbackCount}</span>
+            <MessageSquareText className="h-3.5 w-3.5" /> Góp ý
+            <span aria-label={`${newFeedbackCount} góp ý mới`} className="min-w-5 rounded-full bg-primary/15 px-1.5 py-0.5 text-center text-[9px] font-bold text-primary">{newFeedbackCount}</span>
           </button>
         </div>
 
         {activeTab === "users" ? <>
           <div className="mt-4 flex items-center justify-between gap-3">
           <span className="text-[11px] text-muted-foreground">
-            {loading ? "Updating users..." : `${total} user${total === 1 ? "" : "s"}`}
+            {loading ? "Đang cập nhật..." : `${total} người dùng`}
           </span>
           </div>
 
         {error && (
           <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>Retry</Button>
+            <Button variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>Thử lại</Button>
           </div>
         )}
 
         {loading && users.length === 0 ? (
           <div className="flex flex-1 items-center justify-center gap-2 py-16 text-xs text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading users...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Đang tải người dùng...
           </div>
         ) : !error && total === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="h-6 w-6" /></span>
             <div>
-              <h2 className="text-sm font-semibold">No users found</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Try a different name or email.</p>
+              <h2 className="text-sm font-semibold">Không tìm thấy người dùng</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Thử tên hoặc email khác.</p>
             </div>
           </div>
         ) : users.length > 0 ? (
           <div className="mt-4 min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
-            <table aria-label="Manage users" className="w-full min-w-[900px] border-collapse text-left">
+            <table aria-label="Quản lý người dùng" className="w-full min-w-[900px] border-collapse text-left">
               <thead className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr className="h-9">
-                  <th scope="col" className="px-4">Avatar + Name</th>
+                  <th scope="col" className="px-4">Ảnh đại diện + Tên</th>
                   <th scope="col" className="px-3">Email</th>
-                  <th scope="col" className="w-32 px-3">Role</th>
-                  <th scope="col" className="w-32 px-3">Status</th>
-                  <th scope="col" className="w-36 px-4">Created</th>
-                  <th scope="col" className="w-36 px-4">Last login</th>
+                  <th scope="col" className="w-32 px-3">Vai trò</th>
+                  <th scope="col" className="w-32 px-3">Trạng thái</th>
+                  <th scope="col" className="w-36 px-4">Ngày tạo</th>
+                  <th scope="col" className="w-36 px-4">Đăng nhập gần nhất</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,32 +225,32 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
                         <div className="flex min-w-0 items-center gap-3">
                           <UserAvatar user={user} size="sm" />
                           <span className="min-w-0 truncate text-xs font-semibold">
-                            {user.display_name}{isCurrentUser && <span className="ml-1 font-normal text-primary">(you)</span>}
+                            {user.display_name}{isCurrentUser && <span className="ml-1 font-normal text-primary">(bạn)</span>}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 text-xs text-muted-foreground">{user.email || "—"}</td>
                       <td className="px-3">
                         <select
-                          aria-label={`Role for ${user.display_name}`}
+                          aria-label={`Vai trò của ${user.display_name}`}
                           value={user.role}
                           disabled={isCurrentUser || pending}
                           onChange={(event) => void updateUser(user, { role: event.target.value as "admin" | "user" })}
                           className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs capitalize shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <option value="admin">Admin</option>
-                          <option value="user">User</option>
+                          <option value="admin">Quản trị viên</option>
+                          <option value="user">Người dùng</option>
                         </select>
                       </td>
                       <td className="px-3">
                         <button
                           type="button"
-                          aria-label={`${user.is_active ? "Lock" : "Activate"} ${user.display_name}`}
+                          aria-label={`${user.is_active ? "Khoá" : "Kích hoạt"} ${user.display_name}`}
                           disabled={isCurrentUser || pending}
                           onClick={() => void updateUser(user, { is_active: !user.is_active })}
                           className={`inline-flex h-8 w-full items-center justify-center rounded-md border px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${user.is_active ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"}`}
                         >
-                          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : user.is_active ? "Active" : "Locked"}
+                          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : user.is_active ? "Hoạt động" : "Đã khoá"}
                         </button>
                       </td>
                       <td className="px-4 text-[11px] text-muted-foreground">
@@ -258,10 +258,10 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
                       </td>
                       <td className="px-4 text-[11px] text-muted-foreground">
                         {user.last_login_at ? (
-                          <time dateTime={user.last_login_at} title={new Date(user.last_login_at).toLocaleString()}>
+                          <time dateTime={user.last_login_at} title={new Date(user.last_login_at).toLocaleString("vi-VN")}>
                             {formatLastLogin(user.last_login_at)}
                           </time>
-                        ) : <span className="text-muted-foreground/60">Never</span>}
+                        ) : <span className="text-muted-foreground/60">Chưa bao giờ</span>}
                       </td>
                     </tr>
                   )
@@ -272,11 +272,11 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ currentUserId })
         ) : null}
 
         {total > PAGE_SIZE && !error && (
-          <nav aria-label="User pagination" className="mt-5 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-[11px] text-muted-foreground">Page {page} of {pages}</span>
+          <nav aria-label="Phân trang người dùng" className="mt-5 flex items-center justify-between border-t border-border pt-4">
+            <span className="text-[11px] text-muted-foreground">Trang {page} / {pages}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))} className="gap-1"><ChevronLeft className="h-3.5 w-3.5" /> Prev</Button>
-              <Button variant="outline" size="sm" disabled={page >= pages || loading} onClick={() => setPage((value) => Math.min(pages, value + 1))} className="gap-1">Next <ChevronRight className="h-3.5 w-3.5" /></Button>
+              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))} className="gap-1"><ChevronLeft className="h-3.5 w-3.5" /> Trước</Button>
+              <Button variant="outline" size="sm" disabled={page >= pages || loading} onClick={() => setPage((value) => Math.min(pages, value + 1))} className="gap-1">Sau <ChevronRight className="h-3.5 w-3.5" /></Button>
             </div>
           </nav>
         )}

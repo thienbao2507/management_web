@@ -53,10 +53,14 @@ export const RESOURCE_TYPE_STYLES: Record<
   },
 }
 
+export function resourceTypeLabel(type: ResourceType) {
+  return type === "Other" ? "Khác" : type
+}
+
 export function formatResourceDate(value: string, includeTime = false) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
     timeZone: "Asia/Ho_Chi_Minh",
     ...(includeTime ? { timeStyle: "medium" as const } : {}),
@@ -65,35 +69,35 @@ export function formatResourceDate(value: string, includeTime = false) {
 
 export function validateResourceUrl(value: string): string | null {
   const candidate = value.trim()
-  if (!candidate) return "Resource URL is required."
-  if (candidate.length > 2048) return "Resource URL cannot exceed 2048 characters."
-  if (/\s/.test(candidate)) return "Resource URL cannot contain spaces."
+  if (!candidate) return "Vui lòng nhập đường dẫn."
+  if (candidate.length > 2048) return "Đường dẫn không được vượt quá 2048 ký tự."
+  if (/\s/.test(candidate)) return "Đường dẫn không được chứa khoảng trắng."
   if (!/^https?:\/\//i.test(candidate) || candidate.includes("\\") || Array.from(candidate).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
-    return "Enter a complete HTTP or HTTPS URL with a valid hostname."
+    return "Nhập đầy đủ đường dẫn HTTP hoặc HTTPS với tên miền hợp lệ."
   }
 
   try {
     const parsed = new URL(candidate)
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return "Only HTTP and HTTPS links are allowed."
+      return "Chỉ cho phép liên kết HTTP và HTTPS."
     }
-    if (!parsed.hostname) return "Resource URL must include a valid hostname."
+    if (!parsed.hostname) return "Đường dẫn phải có tên miền hợp lệ."
     if (parsed.hostname.startsWith(".") || parsed.hostname.endsWith(".") || parsed.hostname.includes("..")) {
-      return "Resource URL must include a valid hostname."
+      return "Đường dẫn phải có tên miền hợp lệ."
     }
     if (!parsed.hostname.startsWith("[") && (parsed.hostname.length > 253 || parsed.hostname.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label)))) {
-      return "Resource URL must include a valid hostname."
+      return "Đường dẫn phải có tên miền hợp lệ."
     }
     if (parsed.username || parsed.password) {
-      return "Do not include credentials in a resource URL."
+      return "Không đưa thông tin đăng nhập vào đường dẫn."
     }
     const sensitiveParameters = new Set(["access_token", "refresh_token", "id_token", "token", "api_key", "apikey", "password", "passwd", "client_secret", "authorization"])
     const parameterNames = [...parsed.searchParams.keys(), ...new URLSearchParams(parsed.hash.slice(1)).keys()]
     if (parameterNames.some((name) => sensitiveParameters.has(name.toLowerCase()))) {
-      return "Do not save passwords or access tokens in resource URLs."
+      return "Không lưu mật khẩu hoặc token truy cập trong đường dẫn."
     }
   } catch {
-    return "Enter a complete HTTP or HTTPS URL with a valid hostname."
+    return "Nhập đầy đủ đường dẫn HTTP hoặc HTTPS với tên miền hợp lệ."
   }
 
   return null

@@ -3,14 +3,14 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 export type Theme = "light" | "dark" | "system"
 
 export const ACCENT_COLORS = [
-  { key: "blue", label: "Blue", swatch: "hsl(221 83% 53%)" },
-  { key: "indigo", label: "Indigo", swatch: "hsl(243 75% 59%)" },
-  { key: "violet", label: "Violet", swatch: "hsl(262 83% 58%)" },
-  { key: "pink", label: "Pink", swatch: "hsl(330 81% 60%)" },
-  { key: "red", label: "Red", swatch: "hsl(0 72% 51%)" },
-  { key: "orange", label: "Orange", swatch: "hsl(21 90% 48%)" },
-  { key: "green", label: "Green", swatch: "hsl(161 94% 30%)" },
-  { key: "teal", label: "Teal", swatch: "hsl(175 84% 32%)" },
+  { key: "blue", label: "Xanh dương", swatch: "hsl(221 83% 53%)" },
+  { key: "indigo", label: "Chàm", swatch: "hsl(243 75% 59%)" },
+  { key: "violet", label: "Tím", swatch: "hsl(262 83% 58%)" },
+  { key: "pink", label: "Hồng", swatch: "hsl(330 81% 60%)" },
+  { key: "red", label: "Đỏ", swatch: "hsl(0 72% 51%)" },
+  { key: "orange", label: "Cam", swatch: "hsl(21 90% 48%)" },
+  { key: "green", label: "Xanh lá", swatch: "hsl(161 94% 30%)" },
+  { key: "teal", label: "Xanh ngọc", swatch: "hsl(175 84% 32%)" },
 ] as const satisfies readonly { key: string; label: string; swatch: string }[]
 
 export type AccentColor = (typeof ACCENT_COLORS)[number]["key"]

@@ -27,7 +27,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
     }
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl)
-      reject(new Error("Unable to read this image."))
+      reject(new Error("Không thể đọc ảnh này."))
     }
     image.src = objectUrl
   })
@@ -60,7 +60,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("Unable to prepare this image."))
+    reader.onerror = () => reject(new Error("Không thể xử lý ảnh này."))
     reader.readAsDataURL(blob)
   })
 }
@@ -91,12 +91,12 @@ async function compressBackgroundImage(file: File): Promise<string> {
 
     for (const quality of qualityLevels) {
       const blob = await canvasToBlob(canvas, mimeType, quality)
-      if (!blob) throw new Error("Unable to compress this image.")
+      if (!blob) throw new Error("Không thể nén ảnh này.")
       if (blob.size <= MAX_BACKGROUND_BYTES) return blobToDataUrl(blob)
     }
   }
 
-  throw new Error("The image is still larger than 1.5 MB after compression.")
+  throw new Error("Ảnh vẫn lớn hơn 1,5 MB sau khi nén.")
 }
 
 type PendingAction = "save" | "remove" | null
@@ -122,7 +122,7 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
     try {
       setSelectedImage(await compressBackgroundImage(file))
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to process this image.")
+      setError(failure instanceof Error ? failure.message : "Không thể xử lý ảnh này.")
     } finally {
       setProcessingImage(false)
       onBusyChange(false)
@@ -156,7 +156,7 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
       else await setDim(dim)
       setDialogOpen(false)
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to save the background.")
+      setError(failure instanceof Error ? failure.message : "Không thể lưu hình nền.")
     } finally {
       setPendingAction(null)
       onBusyChange(false)
@@ -173,7 +173,7 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
       await remove()
       setDialogOpen(false)
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to remove the background.")
+      setError(failure instanceof Error ? failure.message : "Không thể xoá hình nền.")
     } finally {
       setPendingAction(null)
       onBusyChange(false)
@@ -188,9 +188,9 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
       onPointerDownOutside={(event) => busy && event.preventDefault()}
     >
         <DialogHeader>
-          <DialogTitle>Custom background</DialogTitle>
+          <DialogTitle>Hình nền tuỳ chỉnh</DialogTitle>
           <DialogDescription>
-            Choose or paste an image, then adjust the overlay so the app stays readable.
+            Chọn hoặc dán một ảnh, sau đó chỉnh lớp phủ để giao diện vẫn dễ đọc.
           </DialogDescription>
         </DialogHeader>
 
@@ -204,18 +204,18 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
           <div className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted">
             {previewImage ? (
               <>
-                <img src={previewImage} alt="Background preview" className="h-full w-full object-cover" />
+                <img src={previewImage} alt="Xem trước hình nền" className="h-full w-full object-cover" />
                 <div className="pointer-events-none absolute inset-0 bg-background" style={{ opacity: dim / 100 }} />
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
                 <ImagePlus className="h-8 w-8" />
-                <span>No custom background</span>
+                <span>Chưa có hình nền tuỳ chỉnh</span>
               </div>
             )}
             {processingImage && (
               <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 text-xs font-medium">
-                <Loader2 className="h-4 w-4 animate-spin" /> Compressing image…
+                <Loader2 className="h-4 w-4 animate-spin" /> Đang nén ảnh…
               </div>
             )}
           </div>
@@ -228,22 +228,22 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
               className="sr-only"
               onChange={handleFileChange}
               disabled={busy}
-              aria-label="Choose background image"
+              aria-label="Chọn ảnh hình nền"
             />
             <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={busy}>
-              <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> Choose image
+              <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> Chọn ảnh
             </Button>
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Clipboard className="h-3.5 w-3.5" /> Or paste with Ctrl+V
+              <Clipboard className="h-3.5 w-3.5" /> Hoặc dán bằng Ctrl+V
             </span>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Images up to 15 MB are resized to 1920px and compressed before upload.
+            Ảnh tối đa 15 MB sẽ được thu nhỏ về 1920px và nén trước khi tải lên.
           </p>
 
           <label className="block space-y-2 text-xs font-medium">
             <span className="flex items-center justify-between">
-              <span>Overlay</span>
+              <span>Lớp phủ</span>
               <span className="tabular-nums text-muted-foreground">{dim}%</span>
             </span>
             <input
@@ -254,21 +254,21 @@ function BackgroundDialogContent({ onBusyChange }: { onBusyChange: (busy: boolea
               onChange={(event) => setDimValue(Number(event.currentTarget.value))}
               disabled={busy}
               className="w-full accent-primary"
-              aria-label="Background overlay"
+              aria-label="Lớp phủ hình nền"
             />
           </label>
 
           <DialogFooter className="gap-2 sm:space-x-0">
             <Button type="button" variant="destructive" onClick={() => void handleRemove()} disabled={busy || !background} className="sm:mr-auto">
               {pendingAction === "remove" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
-              {pendingAction === "remove" ? "Removing…" : "Remove"}
+              {pendingAction === "remove" ? "Đang xoá…" : "Xoá"}
             </Button>
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={busy}>
-              Cancel
+              Huỷ
             </Button>
             <Button type="submit" disabled={busy || !hasChanges}>
               {pendingAction === "save" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              {pendingAction === "save" ? "Saving…" : "Save"}
+              {pendingAction === "save" ? "Đang lưu…" : "Lưu"}
             </Button>
           </DialogFooter>
         </form>

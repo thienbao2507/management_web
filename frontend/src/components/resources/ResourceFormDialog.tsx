@@ -17,7 +17,7 @@ import {
   type ResourcePayload,
   type ResourceType,
 } from "@/services/api"
-import { validateResourceUrl } from "./resourceUtils"
+import { resourceTypeLabel, validateResourceUrl } from "./resourceUtils"
 
 
 interface ResourceFormDialogProps {
@@ -78,7 +78,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
 
     if (candidates.length === 0) return { items, error: null }
     if (candidates.some((item) => item.length > 50)) {
-      return { items, error: "Each keyword can contain at most 50 characters." }
+      return { items, error: "Mỗi từ khoá tối đa 50 ký tự." }
     }
 
     const seen = new Set(items.map((item) => item.toLocaleLowerCase()))
@@ -90,7 +90,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
     })
 
     if (items.length + additions.length > 20) {
-      return { items, error: "A resource can have at most 20 keywords." }
+      return { items, error: "Mỗi Resource có tối đa 20 từ khoá." }
     }
     return {
       items: additions.length > 0 ? [...items, ...additions] : items,
@@ -115,15 +115,15 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
 
     const trimmedTitle = title.trim()
     if (!projectId) {
-      setFormError("Select a project for this resource.")
+      setFormError("Vui lòng chọn dự án cho Resource này.")
       return
     }
     if (!trimmedTitle) {
-      setFormError("Resource Name is required.")
+      setFormError("Vui lòng nhập tên Resource.")
       return
     }
     if (trimmedTitle.length > 255) {
-      setFormError("Resource Name cannot exceed 255 characters.")
+      setFormError("Tên Resource không được vượt quá 255 ký tự.")
       return
     }
     const urlError = validateResourceUrl(url)
@@ -132,7 +132,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
       return
     }
     if (description.trim().length > 2000) {
-      setFormError("Description cannot exceed 2000 characters.")
+      setFormError("Mô tả không được vượt quá 2000 ký tự.")
       return
     }
 
@@ -156,7 +156,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
         keywords: finalKeywords,
       })
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Unable to save resource.")
+      setFormError(error instanceof Error ? error.message : "Không thể lưu Resource.")
     } finally {
       submitInFlight.current = false
     }
@@ -166,9 +166,9 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && !pending && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{resource ? "Edit Resource" : "Add Resource"}</DialogTitle>
+          <DialogTitle>{resource ? "Sửa Resource" : "Thêm Resource"}</DialogTitle>
           <DialogDescription>
-            Save a link to an external project resource. Only HTTP and HTTPS links are accepted.
+            Lưu liên kết tới tài nguyên bên ngoài của dự án. Chỉ chấp nhận liên kết HTTP và HTTPS.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,16 +181,16 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5 text-xs font-medium">
-              <span>Project</span>
+              <span>Dự án</span>
               <select
-                aria-label="Project"
+                aria-label="Dự án"
                 value={projectId}
                 onChange={(event) => setProjectId(event.target.value)}
                 className={selectClassName}
                 disabled={pending || projects.length === 0}
                 required
               >
-                {projects.length === 0 && <option value="">No active projects</option>}
+                {projects.length === 0 && <option value="">Chưa có dự án đang hoạt động</option>}
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name} ({project.key})
@@ -200,9 +200,9 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
             </label>
 
             <label className="space-y-1.5 text-xs font-medium">
-              <span>Resource Type</span>
+              <span>Loại Resource</span>
               <select
-                aria-label="Resource Type"
+                aria-label="Loại Resource"
                 value={resourceType}
                 onChange={(event) => setResourceType(event.target.value as ResourceType)}
                 className={selectClassName}
@@ -210,19 +210,19 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
                 required
               >
                 {RESOURCE_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>{resourceTypeLabel(type)}</option>
                 ))}
               </select>
             </label>
           </div>
 
           <label className="block space-y-1.5 text-xs font-medium">
-            <span>Resource Name</span>
+            <span>Tên Resource</span>
             <Input
-              aria-label="Resource Name"
+              aria-label="Tên Resource"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="API documentation"
+              placeholder="VD: Tài liệu API"
               maxLength={255}
               disabled={pending}
               required
@@ -231,10 +231,10 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
           </label>
 
           <label className="block space-y-1.5 text-xs font-medium">
-            <span>Resource URL</span>
+            <span>Đường dẫn Resource</span>
             <Input
               type="url"
-              aria-label="Resource URL"
+              aria-label="Đường dẫn Resource"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://example.com/resource"
@@ -243,17 +243,17 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
               required
             />
             <span className="block text-[10px] font-normal text-muted-foreground">
-              Do not include passwords, access tokens, or embedded credentials.
+              Không đưa mật khẩu, token truy cập hoặc thông tin đăng nhập vào đường dẫn.
             </span>
           </label>
 
           <label className="block space-y-1.5 text-xs font-medium">
-            <span>Description</span>
+            <span>Mô tả</span>
             <textarea
-              aria-label="Description"
+              aria-label="Mô tả"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What this resource is used for..."
+              placeholder="Resource này dùng để làm gì..."
               maxLength={2000}
               rows={4}
               disabled={pending}
@@ -262,7 +262,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
           </label>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${formId}-keywords`} className="text-xs font-medium">Keywords</label>
+            <label htmlFor={`${formId}-keywords`} className="text-xs font-medium">Từ khoá</label>
             <Input
               id={`${formId}-keywords`}
               value={keywordInput}
@@ -274,7 +274,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
                 }
               }}
               onBlur={commitKeyword}
-              placeholder="Type keywords separated by ; or press Enter"
+              placeholder="Nhập từ khoá, ngăn cách bằng dấu ; hoặc nhấn Enter"
               disabled={pending || keywords.length >= 20}
             />
             {keywords.length > 0 && (
@@ -286,7 +286,7 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
                       type="button"
                       onClick={() => setKeywords((current) => current.filter((item) => item !== keyword))}
                       disabled={pending}
-                      aria-label={`Remove keyword ${keyword}`}
+                      aria-label={`Xoá từ khoá ${keyword}`}
                       className="rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <X className="h-3 w-3" />
@@ -299,10 +299,10 @@ export const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({
         </form>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>Huỷ</Button>
           <Button type="submit" form={formId} disabled={pending || projects.length === 0} className="gap-1.5">
             {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            {pending ? "Saving..." : resource ? "Save Changes" : "Add Resource"}
+            {pending ? "Đang lưu..." : resource ? "Lưu thay đổi" : "Thêm Resource"}
           </Button>
         </DialogFooter>
       </DialogContent>

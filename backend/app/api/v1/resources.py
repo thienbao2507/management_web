@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import String, and_, cast, func, not_, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, contains_eager, joinedload
+from sqlalchemy.orm import Session, aliased, contains_eager, joinedload
 
 from app.api.v1.workspaces import (
     require_workspace_schema,
@@ -99,9 +99,11 @@ def resource_access_map(
     """Map accessible project id -> whether the user owns its workspace (one query)."""
     if not project_ids:
         return {}
+    # Alias so the EXISTS subqueries in accessible_project_filter don't auto-correlate away.
+    owner_workspace = aliased(Workspace)
     rows = (
-        db.query(Project.id, Workspace.owner_user_id)
-        .outerjoin(Workspace, Workspace.id == Project.workspace_id)
+        db.query(Project.id, owner_workspace.owner_user_id)
+        .outerjoin(owner_workspace, owner_workspace.id == Project.workspace_id)
         .filter(Project.id.in_(project_ids), *accessible_project_filter(user_id))
         .all()
     )

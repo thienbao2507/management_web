@@ -195,9 +195,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     accentColor: string
   }[] = [
     { id: "backlog", title: "Backlog", accentColor: "bg-slate-400 dark:bg-neutral-500" },
-    { id: "todo", title: "To Do", accentColor: "bg-blue-500" },
-    { id: "in_progress", title: "In Progress", accentColor: "bg-amber-500" },
-    { id: "done", title: "Done", accentColor: "bg-emerald-500" },
+    { id: "todo", title: "Cần làm", accentColor: "bg-blue-500" },
+    { id: "in_progress", title: "Đang làm", accentColor: "bg-amber-500" },
+    { id: "done", title: "Hoàn thành", accentColor: "bg-emerald-500" },
   ]
 
   return (
@@ -207,7 +207,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         {/* Quick Filter Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium text-muted-foreground mr-1 flex items-center gap-1">
-            <Filter className="h-3 w-3" /> Filters:
+            <Filter className="h-3 w-3" /> Lọc:
           </span>
 
           <Button
@@ -215,7 +215,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             size="sm"
             onClick={() => setActiveFilter("all")}
           >
-            All Tasks ({tasks.length})
+            Tất cả ({tasks.length})
           </Button>
 
           <Button
@@ -223,11 +223,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             size="sm"
             onClick={() => setActiveFilter("my")}
             disabled={!currentUser}
-            title={!currentUser ? "Sign in first" : "Tasks assigned to your account"}
+            title={!currentUser ? "Vui lòng đăng nhập trước" : "Công việc được giao cho tài khoản của bạn"}
             className="gap-1.5"
           >
             <UserAvatar user={currentUser} size="xs" />
-            <span>My Tasks</span>
+            <span>Của tôi</span>
           </Button>
 
           <Button
@@ -237,7 +237,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             className="gap-1 text-amber-600 dark:text-amber-400"
           >
             <Sparkles className="h-3 w-3" />
-            <span>High & Urgent</span>
+            <span>Cao & Khẩn cấp</span>
           </Button>
 
           <Button
@@ -247,7 +247,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             className="gap-1 text-rose-600 dark:text-rose-400"
           >
             <AlertCircle className="h-3 w-3" />
-            <span>Blocked ({tasks.filter((t) => t.is_blocked).length})</span>
+            <span>Bị chặn ({tasks.filter((t) => t.is_blocked).length})</span>
           </Button>
         </div>
 
@@ -259,22 +259,22 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               onChange={(e) => setSelectedAssignee(e.target.value)}
               className="rounded-md border border-border bg-background px-2.5 py-1 text-xs shadow-xs focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="all">All Assignees</option>
+              <option value="all">Tất cả người phụ trách</option>
               {assignees.map((name) => (
                 <option key={name} value={name}>
-                  {name.startsWith("user:") ? usersById[name.slice(5)]?.display_name || "User unavailable" : `${name.slice(7)} (legacy)`}
+                  {name.startsWith("user:") ? usersById[name.slice(5)]?.display_name || "Người dùng không khả dụng" : `${name.slice(7)} (cũ)`}
                 </option>
               ))}
             </select>
           )}
 
-          <div className="flex items-center gap-1" role="group" aria-label="Board zoom controls">
+          <div className="flex items-center gap-1" role="group" aria-label="Điều khiển thu phóng bảng">
             <Button
               variant="outline"
               size="sm"
               onClick={() => changeZoom(-ZOOM_STEP)}
               disabled={zoom <= MIN_ZOOM}
-              aria-label="Zoom out"
+              aria-label="Thu nhỏ"
               className="px-2"
             >
               <ZoomOut className="h-3.5 w-3.5" />
@@ -283,7 +283,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               variant="outline"
               size="sm"
               onClick={() => setZoom(1)}
-              aria-label="Reset zoom"
+              aria-label="Đặt lại thu phóng"
               className="min-w-[54px] px-2 tabular-nums"
             >
               {Math.round(zoom * 100)}%
@@ -293,7 +293,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               size="sm"
               onClick={() => changeZoom(ZOOM_STEP)}
               disabled={zoom >= MAX_ZOOM}
-              aria-label="Zoom in"
+              aria-label="Phóng to"
               className="px-2"
             >
               <ZoomIn className="h-3.5 w-3.5" />
@@ -302,16 +302,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               variant="outline"
               size="sm"
               onClick={fitBoard}
-              aria-label="Fit board"
+              aria-label="Vừa khít bảng"
               className="gap-1 px-2"
             >
               <Maximize2 className="h-3.5 w-3.5" />
-              <span>Fit</span>
+              <span>Vừa khít</span>
             </Button>
           </div>
 
           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-            Showing <strong className="text-foreground">{filteredTasks.length}</strong> tasks
+            Hiển thị <strong className="text-foreground">{filteredTasks.length}</strong> công việc
           </span>
         </div>
       </div>

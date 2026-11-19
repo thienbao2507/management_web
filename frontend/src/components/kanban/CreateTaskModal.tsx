@@ -53,7 +53,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) {
-      setErrorMessage("Title is required")
+      setErrorMessage("Vui lòng nhập tiêu đề")
       return
     }
 
@@ -86,7 +86,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSubtasksRaw("")
       onClose()
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to create task on Neon")
+      setErrorMessage(err.message || "Không tạo được công việc")
     } finally {
       setIsLoading(false)
     }
@@ -96,9 +96,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
+          <DialogTitle>Tạo công việc mới</DialogTitle>
           <DialogDescription>
-            Add a new task directly to Neon PostgreSQL. Task keys (e.g. CMD-1) are auto-generated.
+            Thêm công việc mới vào dự án. Mã công việc (VD: CMD-1) được tạo tự động.
           </DialogDescription>
         </DialogHeader>
 
@@ -112,12 +112,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           {/* Title */}
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Task Title <span className="text-red-500">*</span>
+              Tiêu đề công việc <span className="text-red-500">*</span>
             </label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Implement Neon PostgreSQL data layer"
+              placeholder="VD: Thiết kế trang đăng nhập"
               className="mt-1"
               required
               autoFocus
@@ -127,13 +127,13 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           {/* Description */}
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Description
+              Mô tả
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe acceptance criteria or details..."
+              placeholder="Mô tả tiêu chí nghiệm thu hoặc chi tiết..."
               className="mt-1 flex w-full rounded-md border border-border bg-background p-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -142,7 +142,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-foreground">
-                Column / Status
+                Cột / Trạng thái
               </label>
               <select
                 value={status}
@@ -150,25 +150,25 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 className="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs capitalize shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="backlog">Backlog</option>
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
+                <option value="todo">Cần làm</option>
+                <option value="in_progress">Đang làm</option>
+                <option value="done">Hoàn thành</option>
               </select>
             </div>
 
             <div>
               <label className="text-xs font-semibold text-foreground">
-                Priority
+                Độ ưu tiên
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
                 className="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs capitalize shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option value="low">Thấp</option>
+                <option value="medium">Trung bình</option>
+                <option value="high">Cao</option>
+                <option value="urgent">Khẩn cấp</option>
               </select>
             </div>
           </div>
@@ -177,37 +177,37 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-foreground">
-                Assignee
+                Người phụ trách
               </label>
               <select
-                aria-label="Assignee"
+                aria-label="Người phụ trách"
                 value={assigneeKey}
                 onChange={(e) => setAssigneeKey(e.target.value)}
                 disabled={membersLoading || Boolean(membersError) || isLoading}
                 className="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="">Unassigned</option>
+                <option value="">Chưa giao</option>
                 {members.filter((member) => member.user.is_active).map(({ user }) => (
                   <option key={user.id} value={user.id}>
                     {user.display_name}
                   </option>
                 ))}
               </select>
-              {membersError ? <p role="alert" className="mt-1 text-[10px] text-red-600 dark:text-red-400">{membersError}</p> : !membersLoading && members.length === 0 ? <p className="mt-1 text-[10px] text-muted-foreground">No memberships configured for this project. New tasks can remain unassigned.</p> : null}
+              {membersError ? <p role="alert" className="mt-1 text-[10px] text-red-600 dark:text-red-400">{membersError}</p> : !membersLoading && members.length === 0 ? <p className="mt-1 text-[10px] text-muted-foreground">Dự án chưa có thành viên. Công việc mới có thể để chưa giao.</p> : null}
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  Due Date
+                  Hạn chót
                 </label>
                 <button
                   type="button"
                   onClick={() => setDueDate(getTodayDateString())}
                   className="text-[10px] text-primary hover:underline font-normal cursor-pointer"
                 >
-                  Today
+                  Hôm nay
                 </button>
               </div>
               <Input
@@ -221,23 +221,23 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           {/* Subtasks Checklist (one per line) */}
           <div>
             <label className="text-xs font-semibold text-foreground">
-              Checklist Items (one per line, optional)
+              Danh sách việc (mỗi dòng một việc, không bắt buộc)
             </label>
             <textarea
               rows={2}
               value={subtasksRaw}
               onChange={(e) => setSubtasksRaw(e.target.value)}
-              placeholder="Requirement 1&#10;Requirement 2"
+              placeholder="Việc 1&#10;Việc 2"
               className="mt-1 flex w-full rounded-md border border-border bg-background p-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
-              Cancel
+              Huỷ
             </Button>
             <Button type="submit" size="sm" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Create Task"}
+              {isLoading ? "Đang lưu..." : "Tạo công việc"}
             </Button>
           </DialogFooter>
         </form>

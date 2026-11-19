@@ -49,7 +49,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch (failure) {
       if (abort.signal.aborted || requestId !== sequence.current) return
       setWorkspace(null)
-      setError(failure instanceof Error ? failure.message : "Could not load personal Workspace")
+      setError(failure instanceof Error ? failure.message : "Không tải được Workspace cá nhân")
     } finally {
       if (!abort.signal.aborted && requestId === sequence.current) setLoading(false)
     }
@@ -63,7 +63,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const createWorkspace = useCallback(async (payload: WorkspacePayload) => {
     const userId = currentUser?.id
-    if (!userId) throw new Error("Sign in before creating a Workspace")
+    if (!userId) throw new Error("Vui lòng đăng nhập trước khi tạo Workspace")
     const created = await api.createWorkspace(payload)
     if (activeUserId.current === userId) {
       localStorage.setItem(`management_web_workspace_id:${userId}`, created.id)

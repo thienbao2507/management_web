@@ -28,7 +28,7 @@ export interface SearchInputProps extends InputProps {
 }
 
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ className, value, onChange, onClear, placeholder = "Search tasks...", ...props }, ref) => {
+  ({ className, value, onChange, onClear, placeholder = "Tìm kiếm...", ...props }, ref) => {
     return (
       <div className="relative flex items-center w-full">
         <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
@@ -48,6 +48,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           <button
             type="button"
             onClick={onClear}
+            aria-label="Xoá nội dung tìm kiếm"
             className="absolute right-2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-3 w-3" />

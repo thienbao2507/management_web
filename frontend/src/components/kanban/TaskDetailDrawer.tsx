@@ -30,9 +30,16 @@ const fieldClass =
 const labelClass =
   "flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
 
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Thấp",
+  medium: "Trung bình",
+  high: "Cao",
+  urgent: "Khẩn cấp",
+}
+
 const AssigneeKeepOption: React.FC<{ task: ApiTask }> = ({ task }) => {
   const { name } = useTaskIdentity(task)
-  return <option value="keep">Current: {name}</option>
+  return <option value="keep">Hiện tại: {name}</option>
 }
 
 interface TaskDetailDrawerProps {
@@ -115,9 +122,9 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
         blocker_reason: isBlocked ? blockerReason : "",
       })
       onTaskUpdated({ ...updated, subtasks })
-      showNotification("success", "Saved to Neon PostgreSQL!")
+      showNotification("success", "Đã lưu!")
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to update task")
+      showNotification("error", err.message || "Không cập nhật được công việc")
     } finally {
       setIsSaving(false)
     }
@@ -131,7 +138,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       onTaskDeleted(task.id)
       onClose()
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to delete task")
+      showNotification("error", err.message || "Không xoá được công việc")
       setIsDeleting(false)
     }
   }
@@ -153,7 +160,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       setSubtasks((prev) =>
         prev.map((item) => (item.id === st.id ? { ...item, is_completed: !newStatus } : item))
       )
-      showNotification("error", "Failed to update checklist item")
+      showNotification("error", "Không cập nhật được mục trong danh sách việc")
     }
   }
 
@@ -167,7 +174,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       setSubtasks((prev) => [...prev, created])
       setNewSubtaskTitle("")
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to add subtask")
+      showNotification("error", err.message || "Không thêm được mục việc")
     }
   }
 
@@ -177,7 +184,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       await api.deleteSubtask(task.id, subtaskId)
       setSubtasks((prev) => prev.filter((st) => st.id !== subtaskId))
     } catch {
-      showNotification("error", "Failed to delete subtask")
+      showNotification("error", "Không xoá được mục việc")
     }
   }
 
@@ -186,8 +193,8 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   return (
     <Drawer open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DrawerContent className="overflow-y-auto">
-        <DialogTitle className="sr-only">Task details</DialogTitle>
-        <DialogDescription className="sr-only">Edit task fields, project assignment and checklist.</DialogDescription>
+        <DialogTitle className="sr-only">Chi tiết công việc</DialogTitle>
+        <DialogDescription className="sr-only">Sửa thông tin công việc, người phụ trách và danh sách việc.</DialogDescription>
         {/* Header with Task Key & Priority */}
         <div className="flex items-center justify-between border-b border-border/80 pb-3 pr-8">
           <div className="flex items-center gap-2">
@@ -196,7 +203,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             </span>
             <span className="text-muted-foreground">•</span>
             <Badge variant={priority} className="uppercase font-bold text-[10px]">
-              {priority}
+              {PRIORITY_LABELS[priority]}
             </Badge>
           </div>
           <span className="text-[11px] font-medium text-muted-foreground">
@@ -230,7 +237,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 className="h-3.5 w-3.5 rounded text-rose-600 focus:ring-rose-500"
               />
               <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
-                <AlertCircle className="h-3.5 w-3.5" /> Mark as Blocked
+                <AlertCircle className="h-3.5 w-3.5" /> Đánh dấu bị chặn
               </span>
             </label>
           </div>
@@ -239,7 +246,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               type="text"
               value={blockerReason}
               onChange={(e) => setBlockerReason(e.target.value)}
-              placeholder="Reason for blocker (e.g. Awaiting API credentials)..."
+              placeholder="Lý do bị chặn (VD: Đang chờ thông tin truy cập API)..."
               className={cn(fieldClass, "mt-2 border-rose-300/80 focus:border-rose-500 focus:ring-rose-500/30")}
             />
           )}
@@ -249,7 +256,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
         <div className="mt-6">
           <label className={cn(labelClass, "mb-1.5")}>
             <Type className="h-3.5 w-3.5" />
-            Title
+            Tiêu đề
           </label>
           <input
             type="text"
@@ -264,7 +271,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
           {/* Status selector */}
           <div>
             <label className={cn(labelClass, "mb-1.5")}>
-              <Tag className="h-3.5 w-3.5" /> Status
+              <Tag className="h-3.5 w-3.5" /> Trạng thái
             </label>
             <select
               value={status}
@@ -272,33 +279,33 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               className={cn(fieldClass, "capitalize")}
             >
               <option value="backlog">Backlog</option>
-              <option value="todo">To Do</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
+              <option value="todo">Cần làm</option>
+              <option value="in_progress">Đang làm</option>
+              <option value="done">Hoàn thành</option>
             </select>
           </div>
 
           {/* Priority selector */}
           <div>
             <label className={cn(labelClass, "mb-1.5")}>
-              <AlertCircle className="h-3.5 w-3.5" /> Priority
+              <AlertCircle className="h-3.5 w-3.5" /> Độ ưu tiên
             </label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as any)}
               className={cn(fieldClass, "capitalize")}
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+              <option value="urgent">Khẩn cấp</option>
             </select>
           </div>
 
           {/* Assignee */}
           <div>
             <label className={cn(labelClass, "mb-1.5")}>
-              <UserIcon className="h-3.5 w-3.5" /> Assignee
+              <UserIcon className="h-3.5 w-3.5" /> Người phụ trách
             </label>
             <div className="flex items-center gap-2">
               <TaskAssigneeAvatar
@@ -307,14 +314,14 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 className="shrink-0"
               />
               <select
-                aria-label="Reassign task"
+                aria-label="Giao lại công việc"
                 value={assigneeChoice}
                 onChange={(event) => setAssigneeChoice(event.target.value)}
                 disabled={Boolean(membersError) || isSaving}
                 className={cn(fieldClass, "flex-1 min-w-0")}
               >
                 <AssigneeKeepOption task={task} />
-                <option value="">Unassigned</option>
+                <option value="">Chưa giao</option>
                 {members
                   .filter((member) => member.user.is_active)
                   .map(({ user }) => (
@@ -335,14 +342,14 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className={labelClass}>
-                <Calendar className="h-3.5 w-3.5" /> Due Date
+                <Calendar className="h-3.5 w-3.5" /> Hạn chót
               </label>
               <button
                 type="button"
                 onClick={() => setDueDate(getTodayDateString())}
                 className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
               >
-                Today
+                Hôm nay
               </button>
             </div>
             <Input
@@ -358,7 +365,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
         <div className="mt-6">
           <label className={cn(labelClass, "mb-1.5")}>
             <AlignLeft className="h-3.5 w-3.5" />
-            Description
+            Mô tả
           </label>
           <textarea
             ref={descriptionRef}
@@ -374,17 +381,17 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
           <div className="flex items-center justify-between mb-2">
             <label className={labelClass}>
               <CheckSquare className="h-3.5 w-3.5" />
-              Checklist ({completedCount}/{subtasks.length})
+              Danh sách việc ({completedCount}/{subtasks.length})
             </label>
             <span className="text-[11px] text-muted-foreground">
-              {subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0}% completed
+              {subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0}% hoàn thành
             </span>
           </div>
 
           <div className="space-y-1 rounded-lg border border-border/60 bg-surface/30 p-3">
             {subtasks.length === 0 ? (
               <p className="text-xs text-muted-foreground italic px-1 py-1">
-                No checklist items yet.
+                Chưa có mục việc nào.
               </p>
             ) : (
               subtasks.map((st) => (
@@ -426,7 +433,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 type="text"
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                placeholder="Add checklist item..."
+                placeholder="Thêm mục việc..."
                 className={cn(fieldClass, "flex-1")}
               />
               <Button type="submit" size="sm" variant="outline" className="h-9 w-9 p-0 shrink-0">
@@ -441,14 +448,14 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
           {confirmDelete ? (
             <div className="flex flex-col gap-2 rounded-lg border border-red-300 bg-red-50/60 p-3 text-xs dark:bg-red-950/30">
               <span className="font-semibold text-red-700 dark:text-red-300">
-                Are you sure you want to permanently delete this task?
+                Bạn có chắc muốn xoá vĩnh viễn công việc này?
               </span>
               <div className="flex items-center gap-2 justify-end">
                 <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
-                  Cancel
+                  Huỷ
                 </Button>
                 <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
-                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                  {isDeleting ? "Đang xoá..." : "Xác nhận xoá"}
                 </Button>
               </div>
             </div>
@@ -461,15 +468,15 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete Task</span>
+                <span>Xoá công việc</span>
               </Button>
 
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={onClose}>
-                  Close
+                  Đóng
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save to Neon"}
+                  {isSaving ? "Đang lưu..." : "Lưu"}
                 </Button>
               </div>
             </div>

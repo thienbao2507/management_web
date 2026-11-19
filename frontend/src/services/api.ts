@@ -151,7 +151,7 @@ export class ApiError extends Error {
 }
 
 export class WhiteboardConflictError extends ApiError {
-  constructor(message = "Whiteboard was changed by someone else") {
+  constructor(message = "Whiteboard đã bị người khác thay đổi") {
     super(message, 409)
     this.name = "WhiteboardConflictError"
   }
@@ -290,21 +290,21 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     }
     if (res.status === 502) {
       throw new Error(
-        "Backend FastAPI chưa được bật tại port 8000 (502 Bad Gateway). Hãy chạy backend trong terminal để kết nối Neon."
+        "Không kết nối được máy chủ. Vui lòng thử lại sau."
       )
     }
-    let errorDetail = "An unexpected error occurred"
+    let errorDetail = "Đã xảy ra lỗi không mong muốn"
     try {
       const errorJson = await res.json()
       if (typeof errorJson.detail === "string") {
         errorDetail = errorJson.detail
       } else if (Array.isArray(errorJson.detail)) {
         errorDetail = errorJson.detail
-          .map((item: { msg?: string }) => item.msg || "Invalid value")
+          .map((item: { msg?: string }) => item.msg || "Giá trị không hợp lệ")
           .join("; ")
       }
     } catch {
-      errorDetail = res.statusText || `Error HTTP ${res.status}`
+      errorDetail = res.statusText || `Lỗi HTTP ${res.status}`
     }
     throw new ApiError(errorDetail, res.status)
   }

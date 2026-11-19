@@ -27,13 +27,13 @@ export const FeedbackSubmittedDialog: React.FC<FeedbackSubmittedDialogProps> = (
         <span className="mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <CircleCheck className="h-7 w-7" aria-hidden="true" />
         </span>
-        <DialogTitle>Thank you for your feedback!</DialogTitle>
+        <DialogTitle>Cảm ơn bạn đã góp ý!</DialogTitle>
         <DialogDescription className="max-w-sm leading-relaxed">
-          Your feedback has been sent successfully. We appreciate you taking the time to help us improve.
+          Góp ý của bạn đã được gửi thành công. Cảm ơn bạn đã dành thời gian giúp chúng tôi hoàn thiện hơn.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter className="sm:justify-center">
-        <Button type="button" onClick={() => onOpenChange(false)}>Close</Button>
+        <Button type="button" onClick={() => onOpenChange(false)}>Đóng</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

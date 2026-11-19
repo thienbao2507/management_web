@@ -16,8 +16,10 @@ import {
 const IMAGE_DATA_URL_LIMIT = 2_000_000
 const WHITEBOARD_JSON_LIMIT = 4_000_000
 const SAVE_DEBOUNCE_MS = 1_500
-const SIZE_ERROR_MESSAGE = "Image too large (max ~1.5 MB per image, 4 MB per whiteboard). Remove it to continue saving."
-const CONFLICT_MESSAGE = "This whiteboard was changed by someone else. Reload to get the latest version (your unsaved changes will be lost)."
+const SIZE_ERROR_MESSAGE = "Ảnh quá lớn (tối đa ~1,5 MB mỗi ảnh, 4 MB mỗi whiteboard). Hãy xoá ảnh để tiếp tục lưu."
+const DOTTED_BACKGROUND = "transparent"
+const DOT_SPACING = 20
+const CONFLICT_MESSAGE ="Whiteboard này đã được người khác thay đổi. Hãy tải lại để lấy phiên bản mới nhất (các thay đổi chưa lưu của bạn sẽ bị mất)."
 
 type SaveStatus = "saved" | "dirty" | "saving" | "failed"
 type SaveBlockReason = "size" | "error" | "conflict" | null
@@ -44,9 +46,11 @@ function sceneFromBoard(board: ApiWhiteboardDetail): ScenePayload {
   const appState = rawAppState && typeof rawAppState === "object" && !Array.isArray(rawAppState)
     ? rawAppState as Record<string, unknown>
     : {}
-  const viewBackgroundColor = typeof appState.viewBackgroundColor === "string"
+  // Default/white boards render transparent so the dotted canvas pattern behind Excalidraw shows through.
+  const storedBackground = typeof appState.viewBackgroundColor === "string"
     ? appState.viewBackgroundColor
-    : "#ffffff"
+    : DOTTED_BACKGROUND
+  const viewBackgroundColor = storedBackground.toLowerCase() === "#ffffff" ? DOTTED_BACKGROUND : storedBackground
   const gridSize = typeof appState.gridSize === "number"
     ? appState.gridSize as AppState["gridSize"]
     : 20
@@ -91,6 +95,7 @@ export default function WhiteboardCanvas({ board, onSaved, onReload }: Whiteboar
   const [reloading, setReloading] = useState(false)
 
   const mountedRef = useRef(true)
+  const dotsRef = useRef<HTMLDivElement>(null)
   const unmountingRef = useRef(false)
   const dirtyRef = useRef(false)
   const savingRef = useRef(false)
@@ -251,8 +256,26 @@ export default function WhiteboardCanvas({ board, onSaved, onReload }: Whiteboar
     }
   }
 
+  // Keep the dot grid aligned with the scene while panning/zooming, without re-rendering React.
+  const handleScrollChange = useCallback((scrollX: number, scrollY: number, zoom: { value: number }) => {
+    const el = dotsRef.current
+    if (!el) return
+    const size = DOT_SPACING * zoom.value
+    el.style.backgroundSize = `${size}px ${size}px`
+    el.style.backgroundPosition = `${scrollX * zoom.value}px ${scrollY * zoom.value}px`
+  }, [])
+
   return (
-    <div className="relative h-full min-h-[480px] w-full overflow-hidden">
+    <div className="relative h-full min-h-[480px] w-full overflow-hidden bg-muted/50">
+      <div
+        ref={dotsRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: "radial-gradient(circle, hsl(var(--muted-foreground) / 0.35) 1.2px, transparent 1.4px)",
+          backgroundSize: `${DOT_SPACING}px ${DOT_SPACING}px`,
+        }}
+      />
       <Excalidraw
         initialData={{
           elements: initialScene.elements,
@@ -260,18 +283,20 @@ export default function WhiteboardCanvas({ board, onSaved, onReload }: Whiteboar
           files: initialScene.files,
         }}
         onChange={handleChange}
+        onScrollChange={handleScrollChange}
         theme={resolvedTheme}
+        langCode="vi-VN"
       />
 
       {/* Bottom-right, left of Excalidraw's help button, so it never covers the Library button at top-right. */}
       <div className="pointer-events-none absolute bottom-[1.15rem] right-[4.25rem] z-20">
         {saveStatus === "failed" ? (
           <Button className="pointer-events-auto shadow-md" variant="outline" size="sm" onClick={retrySave}>
-            Save failed – Retry
+            Lưu thất bại – Thử lại
           </Button>
         ) : (
           <span className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
-            {saveStatus === "saving" ? "Saving…" : saveStatus === "dirty" ? "Unsaved changes" : "Saved"}
+            {saveStatus === "saving" ? "Đang lưu…" : saveStatus === "dirty" ? "Chưa lưu thay đổi" : "Đã lưu"}
           </span>
         )}
       </div>
@@ -281,7 +306,7 @@ export default function WhiteboardCanvas({ board, onSaved, onReload }: Whiteboar
           <span>{conflict ? CONFLICT_MESSAGE : SIZE_ERROR_MESSAGE}</span>
           {conflict && (
             <Button variant="outline" size="sm" className="shrink-0 text-foreground" disabled={reloading} onClick={() => void reloadBoard()}>
-              {reloading ? "Reloading…" : "Reload"}
+              {reloading ? "Đang tải lại…" : "Tải lại"}
             </Button>
           )}
         </div>

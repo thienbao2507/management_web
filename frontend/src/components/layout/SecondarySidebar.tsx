@@ -102,20 +102,20 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
   const [myFeedbackOpen, setMyFeedbackOpen] = useState(false)
 
   const menuItems = [
-    { key: "dashboard" as SecondaryNavKey, label: "Dashboard", icon: LayoutDashboard },
-    { key: "roadmap" as SecondaryNavKey, label: "Roadmap", icon: Map },
+    { key: "dashboard" as SecondaryNavKey, label: "Tổng quan", icon: LayoutDashboard },
+    { key: "roadmap" as SecondaryNavKey, label: "Lộ trình", icon: Map },
     {
       key: "active_sprint" as SecondaryNavKey,
-      label: "Active Sprint",
+      label: "Sprint hiện tại",
       icon: Kanban,
-      badge: "Active",
+      badge: "Đang chạy",
     },
-    { key: "issues" as SecondaryNavKey, label: "Issues / Tasks", icon: AlertCircle, count: String(tasksCount) },
+    { key: "issues" as SecondaryNavKey, label: "Công việc", icon: AlertCircle, count: String(tasksCount) },
     { key: "resources" as SecondaryNavKey, label: "Resources", icon: LibraryBig },
     { key: "whiteboard" as SecondaryNavKey, label: "Whiteboard", icon: PenTool },
-    { key: "releases" as SecondaryNavKey, label: "Releases", icon: Package },
-    { key: "team" as SecondaryNavKey, label: "Team Members", icon: Users, count: membersCount == null ? "—" : String(membersCount) },
-    { key: "settings" as SecondaryNavKey, label: "Settings", icon: Settings },
+    { key: "releases" as SecondaryNavKey, label: "Phát hành", icon: Package },
+    { key: "team" as SecondaryNavKey, label: "Thành viên", icon: Users, count: membersCount == null ? "—" : String(membersCount) },
+    { key: "settings" as SecondaryNavKey, label: "Cài đặt", icon: Settings },
   ].filter((item) => VISIBLE_NAV_KEYS.includes(item.key))
 
   return (
@@ -135,10 +135,10 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Workspace</p>
             <p className="truncate text-xs font-semibold" title={workspaceError || undefined}>
-              {legacyMode ? "Shared with me" : workspaceLoading ? "Loading..." : currentWorkspace?.name || (workspaceError ? "Unavailable" : "No Workspace")}
+              {legacyMode ? "Được chia sẻ với tôi" : workspaceLoading ? "Đang tải..." : currentWorkspace?.name || (workspaceError ? "Không khả dụng" : "Chưa có Workspace")}
             </p>
           </div>
-          <button type="button" onClick={onToggleCollapse} title="Collapse sidebar" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground">
+          <button type="button" onClick={onToggleCollapse} title="Thu gọn thanh bên" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
@@ -146,11 +146,11 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
         <div className="mb-2 flex gap-1.5">
           {!currentWorkspace && !workspaceLoading && !workspaceError && !legacyMode && (
             <button type="button" onClick={onCreateWorkspaceClick} className="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10">
-              <Plus className="h-3 w-3" /> Create Workspace
+              <Plus className="h-3 w-3" /> Tạo Workspace
             </button>
           )}
           <button type="button" onClick={onSelectUnassigned} aria-pressed={legacyMode} className={cn("flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold", legacyMode ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted") }>
-            <Archive className="h-3 w-3" /> {legacyMode ? "Back to Workspace" : "Shared"}
+            <Archive className="h-3 w-3" /> {legacyMode ? "Về Workspace" : "Được chia sẻ"}
           </button>
         </div>
 
@@ -158,7 +158,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label={`Select project: ${selectedProject?.name || "none"}`}
+              aria-label={`Chọn dự án: ${selectedProject?.name || "chưa chọn"}`}
               className="flex w-full items-center gap-2 min-w-0 text-left rounded-lg border border-border/70 p-1.5 hover:bg-muted/70 transition-colors group"
             >
               <div title={selectedProject?.key} className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/15 px-0.5 text-primary font-bold text-[10px]">
@@ -167,20 +167,20 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-semibold text-foreground truncate">
-                    {selectedProject ? selectedProject.name : "Select Project"}
+                    {selectedProject ? selectedProject.name : "Chọn dự án"}
                   </h2>
                   <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate font-mono">
-                  {selectedProject ? `Key: ${selectedProject.key}` : legacyMode ? "Project shared with you" : "Project in Workspace"}
+                  {selectedProject ? `Mã: ${selectedProject.key}` : legacyMode ? "Dự án được chia sẻ với bạn" : "Dự án trong Workspace"}
                 </p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel className="flex items-center justify-between">
-              <span>{legacyMode ? "Shared Projects" : "Workspace Projects"}</span>
-              <span className="text-[10px] text-muted-foreground">{projects.length} total</span>
+              <span>{legacyMode ? "Dự án được chia sẻ" : "Dự án trong Workspace"}</span>
+              <span className="text-[10px] text-muted-foreground">Tổng {projects.length}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {projects.map((proj) => (
@@ -202,7 +202,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             ))}
             {projects.length === 0 && (
               <div className="p-2 text-center text-xs text-muted-foreground">
-                No Projects in this scope.
+                Không có dự án nào.
               </div>
             )}
             <DropdownMenuSeparator />
@@ -212,7 +212,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
               className="text-primary font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Create New Project</span>
+              <span>Tạo dự án mới</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -221,7 +221,7 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto px-2 py-3">
         <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-          Project Views
+          Chế độ xem dự án
         </div>
 
         <nav className="space-y-0.5">
@@ -277,13 +277,13 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label="User profile menu"
+              aria-label="Menu hồ sơ người dùng"
               className="flex w-full items-center gap-2 rounded-lg border border-border/80 bg-surface/50 p-2 text-left transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <UserAvatar user={currentUser} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[11px] font-semibold text-foreground">{currentUser?.display_name || "Not signed in"}</span>
-                <span className="block truncate text-[10px] text-muted-foreground">{currentUser?.email || currentUser?.job_title || "Authenticated profile"}</span>
+                <span className="block truncate text-[11px] font-semibold text-foreground">{currentUser?.display_name || "Chưa đăng nhập"}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{currentUser?.email || currentUser?.job_title || "Hồ sơ đã xác thực"}</span>
               </span>
               <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             </button>
@@ -292,24 +292,24 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="flex items-center gap-2 font-semibold">
-                  <span className="truncate">{currentUser?.display_name || "Not signed in"}</span>
-                  {currentUser?.role === "admin" && <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">Admin</span>}
+                  <span className="truncate">{currentUser?.display_name || "Chưa đăng nhập"}</span>
+                  {currentUser?.role === "admin" && <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">Quản trị</span>}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  {currentUser?.job_title || "Authenticated profile"}
+                  {currentUser?.job_title || "Hồ sơ đã xác thực"}
                 </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Edit profile</DropdownMenuItem>}
-            {currentUser?.role === "admin" && <DropdownMenuItem className="gap-2" onSelect={() => onSelectItem("admin")}><Shield className="h-3.5 w-3.5" />Manage users</DropdownMenuItem>}
-            {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Send feedback</DropdownMenuItem>}
-            {currentUser && <DropdownMenuItem onSelect={() => setMyFeedbackOpen(true)}>My feedback</DropdownMenuItem>}
-            {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Sign out</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => openIdentity("edit")}>Sửa hồ sơ</DropdownMenuItem>}
+            {currentUser?.role === "admin" && <DropdownMenuItem className="gap-2" onSelect={() => onSelectItem("admin")}><Shield className="h-3.5 w-3.5" />Quản lý người dùng</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>Gửi góp ý</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => setMyFeedbackOpen(true)}>Góp ý của tôi</DropdownMenuItem>}
+            {currentUser && <DropdownMenuItem onSelect={() => void logout()}>Đăng xuất</DropdownMenuItem>}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="gap-2">
                 <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: ACCENT_COLORS.find((color) => color.key === accent)?.swatch }} />
-                Theme
+                Giao diện
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-40">
                 {ACCENT_COLORS.map(({ key, label, swatch }) => (
@@ -327,11 +327,10 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
-                  Background…
+                  Hình nền…
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

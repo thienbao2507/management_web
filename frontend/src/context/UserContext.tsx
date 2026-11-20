@@ -16,6 +16,7 @@ interface UserStore {
   resendVerification: (email: string) => Promise<string>
   logout: () => Promise<void>
   saveProfile: (payload: Omit<UserPayload, "email">) => Promise<ApiUser>
+  updateCurrentAvatar: (customAvatarUrl: string | null) => void
   dialogMode: IdentityDialogMode
   openIdentity: (mode: IdentityDialogMode) => void
 }
@@ -128,7 +129,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return user
   }, [currentUser, ingestUsers])
 
-  return <UserContext.Provider value={{ usersById, currentUser, loading, error, refresh, ingestUsers, login, register, verifyEmail, resendVerification, logout, saveProfile, dialogMode, openIdentity }}>{children}</UserContext.Provider>
+  const updateCurrentAvatar = useCallback((customAvatarUrl: string | null) => {
+    if (!currentUser) return
+    const user = { ...currentUser, custom_avatar_url: customAvatarUrl }
+    setCurrentUser(user)
+    setUsers((previous) => ({ ...previous, [user.id]: user }))
+  }, [currentUser])
+
+  return <UserContext.Provider value={{ usersById, currentUser, loading, error, refresh, ingestUsers, login, register, verifyEmail, resendVerification, logout, saveProfile, updateCurrentAvatar, dialogMode, openIdentity }}>{children}</UserContext.Provider>
 }
 
 export function useUsers() {

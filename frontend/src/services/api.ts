@@ -328,6 +328,12 @@ export const api = {
   deleteMyBackground(): Promise<void> {
     return request("/me/background", { method: "DELETE" })
   },
+  uploadMyAvatar(image: string): Promise<{ custom_avatar_url: string }> {
+    return request("/users/me/avatar", { method: "PUT", body: JSON.stringify({ image }) })
+  },
+  deleteMyAvatar(): Promise<void> {
+    return request("/users/me/avatar", { method: "DELETE" })
+  },
   register(payload: { display_name: string; email: string; password: string }): Promise<RegisterResponse> {
     return request("/auth/register", { method: "POST", body: JSON.stringify(payload) })
   },

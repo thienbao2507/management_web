@@ -7,6 +7,7 @@ from app.models.project_resource import ProjectResource, ProjectResourcePin
 from app.models.whiteboard import Whiteboard
 from app.models.request_user import RequestUser
 from app.models.user import User
+from app.models.user_avatar import UserAvatar
 from app.models.user_background import UserBackground
 from app.models.project_membership import ProjectMembership
 from app.models.workspace import Workspace
@@ -23,6 +24,7 @@ __all__ = [
     "Whiteboard",
     "RequestUser",
     "User",
+    "UserAvatar",
     "UserBackground",
     "ProjectMembership",
     "Workspace",

@@ -7,6 +7,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.tasks import router as tasks_router
 from app.api.v1.resources import router as resources_router
 from app.api.v1.whiteboards import router as whiteboards_router
+from app.api.v1.user_avatar import router as user_avatar_router
 from app.api.v1.users import router as users_router
 from app.api.v1.project_workspace import router as project_workspace_router
 from app.api.v1.workspaces import router as workspaces_router
@@ -35,6 +36,7 @@ app.include_router(projects_router, prefix=settings.API_V1_STR)
 app.include_router(tasks_router, prefix=settings.API_V1_STR)
 app.include_router(resources_router, prefix=settings.API_V1_STR)
 app.include_router(whiteboards_router, prefix=settings.API_V1_STR)
+app.include_router(user_avatar_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(project_workspace_router, prefix=settings.API_V1_STR)
 app.include_router(workspaces_router, prefix=settings.API_V1_STR)
@@ -54,6 +56,10 @@ async def database_programming_error(request, error: ProgrammingError):
     if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "user_backgrounds" in (error.statement or ""):
         return JSONResponse(status_code=503, content={
             "detail": "Custom backgrounds are not available until the database migration is applied."
+        })
+    if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "user_avatars" in (error.statement or ""):
+        return JSONResponse(status_code=503, content={
+            "detail": "Custom avatars are not available until the database migration is applied."
         })
     if getattr(error.orig, "pgcode", None) in {"42P01", "42703"} and "auth_" in (error.statement or ""):
         return JSONResponse(status_code=503, content={

@@ -513,7 +513,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                       <tr className="h-9">
                         <th scope="col" className="pl-14 pr-3">Tên</th>
                         <th scope="col" className="w-20 px-2 [@container(min-width:40rem)]:w-36">Công khai</th>
-                        <th scope="col" className="w-24 px-2 [@container(min-width:40rem)]:w-28">Loại</th>
+                        <th scope="col" className="hidden w-28 px-2 [@container(min-width:40rem)]:table-cell">Loại</th>
                         <th scope="col" className="hidden w-[20%] px-3 [@container(min-width:52rem)]:table-cell">Tag</th>
                         <th scope="col" className="hidden w-28 px-3 [@container(min-width:52rem)]:table-cell">Cập nhật</th>
                         <th scope="col" className="w-[4.5rem] px-2 text-right"><span className="sr-only">Thao tác</span></th>
@@ -581,7 +581,7 @@ export const ResourcePage: React.FC<ResourcePageProps> = ({
                                 </button>
                               </div>
                             </td>
-                            <td className="px-2">
+                            <td className="hidden px-2 [@container(min-width:40rem)]:table-cell">
                               <Badge variant="outline" className="max-w-full whitespace-nowrap px-1.5 text-[10px]" title={resourceTypeLabel(resource.resource_type)}>
                                 <span className="truncate">{resourceTypeLabel(resource.resource_type)}</span>
                               </Badge>

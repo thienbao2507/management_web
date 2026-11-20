@@ -356,7 +356,7 @@ export const AdminFeedbackPanel: React.FC<AdminFeedbackPanelProps> = ({ onCounts
                         className={`h-7 cursor-pointer rounded-full border px-2 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 ${statusClasses[item.status]}`}
                       >
                         {STATUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
+                          <option key={option.value} value={option.value} className="bg-background text-foreground">{option.label}</option>
                         ))}
                       </select>
                       {rowSavingId === item.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
